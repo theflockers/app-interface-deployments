@@ -57,7 +57,7 @@ spec:
         - /manager
         args:
         - --leader-elect
-        image: quay.io/redhat-appstudio/internal-services:b9a6b850f2e058685f4fd0e5c9955e765b1adeb4
+        image: quay.io/redhat-appstudio/internal-services:b2494859c61fce4623767985fa5a4fc4ae4fa7c4
         name: manager
         securityContext:
           allowPrivilegeEscalation: false
