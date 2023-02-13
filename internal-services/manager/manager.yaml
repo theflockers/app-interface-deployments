@@ -43,6 +43,10 @@ spec:
       #             operator: In
       #             values:
       #               - linux
+      volumes:
+        - name: remote-client-config
+          secret:
+            secretName: remote-client-config
       securityContext:
         runAsNonRoot: true
         # TODO(user): For common cases that do not require escalating privileges
@@ -57,7 +61,13 @@ spec:
             - /manager
           args:
             - --leader-elect
+            - --remote-cluster-config-file
+            - /mnt/internal-services/remote-client-config/kubeconfig
           image: quay.io/redhat-appstudio/internal-services:2989df45f90a4e67ec1875f836172b50e92cfe21
+          volumeMounts:
+            - mountPath: "/mnt/internal-services/remote-client-config"
+              name: remote-client-config
+              readOnly: true
           name: manager
           securityContext:
             allowPrivilegeEscalation: false
