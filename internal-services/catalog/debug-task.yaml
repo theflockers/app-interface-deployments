@@ -1,0 +1,22 @@
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: debug-secret
+spec:
+  steps:
+    - name: debug-kubeconfig
+      image: alpine
+      script: |
+        #!/bin/sh
+        ls -l /mnt/remote-client-config
+        ls -l /mnt/remote-client-config/kubeconfig
+        cat /mnt/remote-client-config/kubeconfig
+      volumeMounts:
+        - mountPath: /mnt/remote-client-config
+          name: remote-client-config
+  volumes:
+    - name: remote-client-config
+      secret:
+        defaultMode: 256
+        secretName: remote-client-config
