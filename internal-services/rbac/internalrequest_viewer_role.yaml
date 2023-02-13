@@ -10,18 +10,19 @@ metadata:
     app.kubernetes.io/part-of: internal-services
     app.kubernetes.io/managed-by: kustomize
   name: internalrequest-viewer-role
+  namespace: stonesoup-int-srvc
 rules:
-- apiGroups:
-  - appstudio.redhat.com
-  resources:
-  - internalrequests
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - appstudio.redhat.com
-  resources:
-  - internalrequests/status
-  verbs:
-  - get
+  - apiGroups:
+      - appstudio.redhat.com
+    resources:
+      - internalrequests
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - appstudio.redhat.com
+    resources:
+      - internalrequests/status
+    verbs:
+      - get

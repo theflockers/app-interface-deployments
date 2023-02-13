@@ -1,8 +1,8 @@
----
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
   name: debug-secret
+  namespace: stonesoup-int-srvc
 spec:
   steps:
     - name: debug-kubeconfig
