@@ -63,8 +63,7 @@ spec:
             - --leader-elect
             - --remote-cluster-config-file
             - /mnt/internal-services/remote-client-config/kubeconfig
-          image: quay.io/redhat-appstudio/internal-services:2989df45f90a4e67ec1875f836172b50e92cfe21
-          #image: quay.io/redhat-appstudio/internal-services:logging4
+          image: quay.io/redhat-appstudio/internal-services:e4f585e40bfc733fc99fe88213c05dc8e62f3854
           volumeMounts:
             - mountPath: "/mnt/internal-services/remote-client-config"
               name: remote-client-config
