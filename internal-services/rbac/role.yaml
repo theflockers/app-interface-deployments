@@ -43,6 +43,14 @@ rules:
       - patch
       - update
   - apiGroups:
+      - appstudio.redhat.com
+    resources:
+      - internalservicesconfigs/status
+    verbs:
+      - get
+      - patch
+      - update
+  - apiGroups:
       - tekton.dev
     resources:
       - pipelineruns
