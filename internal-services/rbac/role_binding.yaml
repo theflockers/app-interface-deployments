@@ -17,3 +17,6 @@ subjects:
   - kind: ServiceAccount
     name: controller-manager
     namespace: stonesoup-int-srvc
+  - kind: User
+    apiGroup: rbac.authorization.k8s.io
+    name: shebert
