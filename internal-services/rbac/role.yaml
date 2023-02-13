@@ -36,7 +36,12 @@ rules:
     resources:
       - internalservicesconfigs
     verbs:
+      - create
+      - list
+      - watch
       - get
+      - patch
+      - update
   - apiGroups:
       - tekton.dev
     resources:
