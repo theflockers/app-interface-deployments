@@ -10,23 +10,22 @@ metadata:
     app.kubernetes.io/part-of: internal-services
     app.kubernetes.io/managed-by: kustomize
   name: internalservicesconfig-editor-role
-  namespace: stonesoup-int-srvc
 rules:
-  - apiGroups:
-      - appstudio.redhat.com
-    resources:
-      - internalservicesconfigs
-    verbs:
-      - create
-      - delete
-      - get
-      - list
-      - patch
-      - update
-      - watch
-  - apiGroups:
-      - appstudio.redhat.com
-    resources:
-      - internalservicesconfigs/status
-    verbs:
-      - get
+- apiGroups:
+  - appstudio.redhat.com
+  resources:
+  - internalservicesconfigs
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - appstudio.redhat.com
+  resources:
+  - internalservicesconfigs/status
+  verbs:
+  - get
