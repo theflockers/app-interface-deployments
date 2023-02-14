@@ -57,7 +57,9 @@ spec:
             - /manager
           args:
             - --leader-elect
-          image: quay.io/redhat-appstudio/internal-services:c730e1fc3f4fe01e5ccc6654de88089f24b534f5
+            - --remote-cluster-config-file
+            - /mnt/internal-services/remote-client-config
+          image: quay.io/redhat-appstudio/internal-services:27742d74447836ef61adcd5111a927bb718c81fe
           name: manager
           securityContext:
             allowPrivilegeEscalation: false
@@ -90,15 +92,13 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
+          volumeMounts:
+            - mountPath: /mnt/internal-services/remote-client-config
+              name: remote-client-config
+              readOnly: true
       serviceAccountName: controller-manager
       terminationGracePeriodSeconds: 10
-    volumes:
-      - name: remote-client-config
-        secret:
-          secretName: remote-client-config
-    containers:
-      - args: --remote-cluster-config-file/mnt/internal-services/remote-client-config
-        volumeMounts:
-          - mountPath: /mnt/internal-services/remote-client-config
-            name: remote-client-config
-            readOnly: true
+      volumes:
+        - name: remote-client-config
+          secret:
+            secretName: remote-client-config
