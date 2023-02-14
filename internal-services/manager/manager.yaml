@@ -43,10 +43,6 @@ spec:
       #             operator: In
       #             values:
       #               - linux
-      volumes:
-        - name: remote-client-config
-          secret:
-            secretName: remote-client-config
       securityContext:
         runAsNonRoot: true
         # TODO(user): For common cases that do not require escalating privileges
@@ -57,48 +53,52 @@ spec:
         # seccompProfile:
         #   type: RuntimeDefault
       containers:
-      - command:
-        - /manager
-        args:
-        - --leader-elect
-        - --remote-cluster-config-file
-        - /mnt/internal-services/remote-client-config/kubeconfig
-        image: quay.io/redhat-appstudio/internal-services:a16db1bc8e215f8f1018eea6fcb14612e6dacf19
-        name: manager
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-              - "ALL"
-        volumeMounts:
-          - mountPath: "/mnt/internal-services/remote-client-config"
-            name: remote-client-config
-            readOnly: true
-        livenessProbe:
-          httpGet:
-            path: /healthz
-            port: 8081
-          initialDelaySeconds: 15
-          periodSeconds: 20
-        readinessProbe:
-          httpGet:
-            path: /readyz
-            port: 8081
-          initialDelaySeconds: 5
-          periodSeconds: 10
-        # TODO(user): Configure the resources accordingly based on the project requirements.
-        # More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
-        resources:
-          limits:
-            cpu: 500m
-            memory: 128Mi
-          requests:
-            cpu: 10m
-            memory: 64Mi
-        env:
-          - name: SERVICE_NAMESPACE
-            valueFrom:
-              fieldRef:
-                fieldPath: metadata.namespace
+        - command:
+            - /manager
+          args:
+            - --leader-elect
+          image: quay.io/redhat-appstudio/internal-services:c730e1fc3f4fe01e5ccc6654de88089f24b534f5
+          name: manager
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - "ALL"
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8081
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8081
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          # TODO(user): Configure the resources accordingly based on the project requirements.
+          # More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+          resources:
+            limits:
+              cpu: 500m
+              memory: 128Mi
+            requests:
+              cpu: 10m
+              memory: 64Mi
+          env:
+            - name: SERVICE_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
       serviceAccountName: controller-manager
       terminationGracePeriodSeconds: 10
+    volumes:
+      - name: remote-client-config
+        secret:
+          secretName: remote-client-config
+    containers:
+      - args: --remote-cluster-config-file/mnt/internal-services/remote-client-config
+        volumeMounts:
+          - mountPath: /mnt/internal-services/remote-client-config
+            name: remote-client-config
+            readOnly: true
