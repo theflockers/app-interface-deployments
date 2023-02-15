@@ -1,0 +1,168 @@
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: t-add-fbc-fragment-to-index-image
+  labels:
+    app.kubernetes.io/version: "0.1"
+  annotations:
+    tekton.dev/pipelines.minVersion: "0.12.1"
+    tekton.dev/tags: release
+spec:
+  description: >-
+    Submit a build request to add operator bundles to an index image
+  params:
+    - name: fbcFragment
+      type: string
+      description: FBC fragment built by HACBS
+    - name: fromIndex
+      type: string
+      description: ->
+        Index image (catalog of catalogs) the FBC fragment will be added to
+    - name: overwriteFromIndex
+      type: string
+      description: Boolean indicating if the from_index should be overwritten
+    - name: binaryImage
+      type: string
+      description: ->
+        OCP binary image to be baked into the index image. This image is used to
+        serve the index image content on customer clusters.
+    - name: buildTags
+      type: string
+      description: ->
+        List of additional tags the internal index image copy should be
+        tagged with
+    - name: addArches
+      type: string
+      description: List of arches the index image should be built for
+    - name: buildTimeoutSeconds
+      type: string
+      default: "300"
+      description: Timeout seconds to receive the build state
+    - name: iibServiceConfigSecret
+      type: string
+      description: Secret with IIB service config to be used
+    - name: iibServiceAccountSecret
+      type: string
+      description: Secret with IIB credentials to be used
+  results:
+    - name: jsonBuildInfo
+      description: JSON build information for the requested build
+    - name: buildState
+      description: IIB Service build state
+  steps:
+    - name: s-add-fbc-fragment-to-index-image
+      image: >-
+        quay.io/hacbs-release/release-base-image@sha256:9e7fd1a3ccf0d2c8077f565c78e50862a7cc4792d548b5c01c8b09077e6d23a7
+      env:
+        - name: IIB_SERVICE_URL
+          valueFrom:
+            secretKeyRef:
+              name: $(params.iibServiceConfigSecret)
+              key: url
+        - name: IIB_OVERWRITE_FROM_INDEX_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: $(params.iibServiceConfigSecret)
+              key: overwriteFromIndexToken
+        - name: KRB5_CONF_CONTENT
+          valueFrom:
+            secretKeyRef:
+              name: $(params.iibServiceConfigSecret)
+              key: krb5.conf
+      script: |
+        #!/usr/bin/env bash
+        #
+        # adds the json request parameters to a file to be used as input data
+        # for curl and preventing shell expansion.
+        json_input=/tmp/$$.tmp
+        json_raw_input=/tmp/$$_raw.tmp
+        
+        cat > $json_raw_input <<JSON
+        {
+          "fbc_fragment": "$(params.fbcFragment)",
+          "from_index": "$(params.fromIndex)",
+          "binary_image": "$(params.binaryImage)",
+          "build_tags": `echo $(params.buildTags)`,
+          "add_arches": `echo $(params.addArches)`,
+          "overwriteFromIndex": "$(params.overwriteFromIndex)",
+          "overwriteFromIndexToken": "${IIB_OVERWRITE_FROM_INDEX_TOKEN}"
+        }
+        JSON
+        
+        # filtering out empty params
+        jq -r '
+          if .binary_image == "" then del(.binary_image) else . end |
+          if .overwriteFromIndex == "false" then del(( .overwriteFromIndex, .overwriteFromIndexToken)) else . end |
+          if(.add_arches | length) == 0 then del(.add_arches) else . end |
+          if(.build_tags | length) == 0 then del(.build_tags) else . end' ${json_raw_input} > ${json_input}
+        
+        # performs kerberos authentication.
+        base64 -d /mnt/service-account-secret/keytab > /tmp/keytab
+        
+        echo "${KRB5_CONF_CONTENT}" > /tmp/krb5.conf
+        export KRB5_CONFIG=/tmp/krb5.conf
+        
+        /usr/bin/kinit -V $(cat /mnt/service-account-secret/principal) -k -t /tmp/keytab
+        
+        echo "Calling endpoint" > $(results.buildState.path)
+        # adds image to the index.
+        /usr/bin/curl -u : --negotiate -s -X POST -H "Content-Type: application/json" -d@${json_input} --insecure \
+        "${IIB_SERVICE_URL}/builds/fbc-operations" |tee $(results.jsonBuildInfo.path)
+        
+        # checks if the previous call returned an error.
+        ! jq -e -r ".error | select( . != null )" $(results.jsonBuildInfo.path)
+      volumeMounts:
+        - name: service-account-secret
+          mountPath: /mnt/service-account-secret
+    - name: s-wait-for-build-state
+      image: >-
+        quay.io/hacbs-release/release-base-image@sha256:9e7fd1a3ccf0d2c8077f565c78e50862a7cc4792d548b5c01c8b09077e6d23a7
+      env:
+        - name: IIB_SERVICE_URL
+          valueFrom:
+            secretKeyRef:
+              name: $(params.iibServiceConfigSecret)
+              key: url
+      script: |
+        #!/usr/bin/env bash
+        TASKRUN="/tmp/$$.sh"
+        
+        cat > ${TASKRUN} <<SH
+        #!/usr/bin/env bash
+        #
+        build_id=`jq -r ".id" $(results.jsonBuildInfo.path)`
+        state=""
+        while true; do
+            #
+            # fetching build information.
+            build_info=\$(/usr/bin/curl -s --insecure "\${IIB_SERVICE_URL}/builds/\${build_id}")
+            # get state from the build information.
+            state=\$(jq -r ".state" <<< \${build_info})
+            case \${state} in
+              "complete") break ;;
+              "failed") break ;;
+              *) echo -en "."; sleep 30; continue ;;
+            esac
+        done
+        echo
+        jq '{ "state": .state, "state_reason": .state_reason }' <<< \${build_info} | tee $(results.buildState.path)
+        test \${state} = "complete" && exit 0 || exit 1
+        SH
+        chmod +x ${TASKRUN}
+        echo -en "waiting for build state to exit..."
+        # adding timeout here due to the Task timeout not accepting $(params.buildTimeoutSeconds)
+        # as parameter.
+        timeout $(params.buildTimeoutSeconds) ${TASKRUN}
+        SYSEXIT=$?
+        if [ ${SYSEXIT} -eq 124 ]; then
+            echo "Timeout while waiting for the build to finish"
+            echo "Build timeout" < $(results.buildState.path)
+        fi
+        exit ${SYSEXIT}
+  volumes:
+    - name: service-account-secret
+      secret:
+        secretName: $(params.iibServiceAccountSecret)
+        defaultMode:
+          0400
