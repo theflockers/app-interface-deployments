@@ -140,7 +140,7 @@ spec:
             # get state from the build information.
             state=\$(jq -r ".state" <<< \${build_info})
             # remove the history as it breaks the results build up
-            jq -r 'del(.state_history)' <<< \${build_info} |jq -c . > $(results.jsonBuildInfo.path)
+            jq -r 'del(.state_history)' <<< \${build_info} | jq -c . > $(results.jsonBuildInfo.path)
             case \${state} in
               "complete") break ;;
               "failed") break ;;
