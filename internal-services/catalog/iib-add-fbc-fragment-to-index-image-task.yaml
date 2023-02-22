@@ -127,7 +127,7 @@ spec:
       script: |
         #!/usr/bin/env bash
         TASKRUN="/tmp/$$.sh"
-        
+
         cat > ${TASKRUN} <<SH
         #!/usr/bin/env bash
         #
@@ -139,6 +139,8 @@ spec:
             build_info=\$(/usr/bin/curl -s --insecure "\${IIB_SERVICE_URL}/builds/\${build_id}")
             # get state from the build information.
             state=\$(jq -r ".state" <<< \${build_info})
+            # remove the history as it breaks the results build up
+            jq -r 'del(.state_history)' <<< \${build_info} |jq -c . > $(results.jsonBuildInfo.path)
             case \${state} in
               "complete") break ;;
               "failed") break ;;
@@ -146,9 +148,11 @@ spec:
             esac
         done
         echo
-        jq '{ "state": .state, "state_reason": .state_reason }' <<< \${build_info} | tee $(results.buildState.path)
+        jq '{ "state": .state, "state_reason": .state_reason }' $(results.jsonBuildInfo.path) \
+        | tee $(results.buildState.path)
         test \${state} = "complete" && exit 0 || exit 1
         SH
+
         chmod +x ${TASKRUN}
         echo -en "waiting for build state to exit..."
         # adding timeout here due to the Task timeout not accepting $(params.buildTimeoutSeconds)
