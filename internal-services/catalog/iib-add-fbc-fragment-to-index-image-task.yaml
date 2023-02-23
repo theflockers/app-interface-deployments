@@ -85,7 +85,7 @@ spec:
           "binary_image": "$(params.binaryImage)",
           "build_tags": `echo $(params.buildTags)`,
           "add_arches": `echo $(params.addArches)`,
-          "overwrite_from_index": "$(params.overwriteFromIndex)",
+          "overwrite_from_index": $(params.overwriteFromIndex),
           "overwrite_from_index_token": "${IIB_OVERWRITE_FROM_INDEX_TOKEN}"
         }
         JSON
@@ -93,7 +93,7 @@ spec:
         # filtering out empty params
         jq -r '
           if .binary_image == "" then del(.binary_image) else . end |
-          if .overwriteFromIndex == "false" then del(( .overwriteFromIndex, .overwriteFromIndexToken)) else . end |
+          if .overwrite_from_index == "false" then del(( .overwrite_from_index, .overwrite_from_index_token)) else . end |
           if(.add_arches | length) == 0 then del(.add_arches) else . end |
           if(.build_tags | length) == 0 then del(.build_tags) else . end' ${json_raw_input} > ${json_input}
         
