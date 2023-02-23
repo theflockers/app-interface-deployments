@@ -77,7 +77,7 @@ spec:
         # for curl and preventing shell expansion.
         json_input=/tmp/$$.tmp
         json_raw_input=/tmp/$$_raw.tmp
-        
+
         cat > $json_raw_input <<JSON
         {
           "fbc_fragment": "$(params.fbcFragment)",
@@ -85,8 +85,8 @@ spec:
           "binary_image": "$(params.binaryImage)",
           "build_tags": `echo $(params.buildTags)`,
           "add_arches": `echo $(params.addArches)`,
-          "overwriteFromIndex": "$(params.overwriteFromIndex)",
-          "overwriteFromIndexToken": "${IIB_OVERWRITE_FROM_INDEX_TOKEN}"
+          "overwrite_from_index": "$(params.overwriteFromIndex)",
+          "overwrite_from_index_token": "${IIB_OVERWRITE_FROM_INDEX_TOKEN}"
         }
         JSON
         
