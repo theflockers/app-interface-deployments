@@ -58,3 +58,11 @@ rules:
   - pipelineruns/status
   verbs:
   - get
+- apiGroups:
+  - tekton.dev
+  resources:
+  - pipelines
+  verbs:
+  - get
+  - list
+  - watch
