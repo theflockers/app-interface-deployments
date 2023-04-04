@@ -59,7 +59,7 @@ spec:
             - --leader-elect
             - --remote-cluster-config-file
             - /mnt/internal-services/remote-client-config/kubeconfig
-          image: quay.io/redhat-appstudio/internal-services:cbda4d577fe13fc7c4a9886b73773019da762741
+          image: quay.io/redhat-appstudio/internal-services:6e4f96e888cffdb725d79a34573dfc8914945442
           name: manager
           securityContext:
             allowPrivilegeEscalation: false
