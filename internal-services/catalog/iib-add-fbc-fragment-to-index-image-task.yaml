@@ -53,6 +53,7 @@ spec:
       description: JSON build information for the requested build
     - name: buildState
       description: IIB Service build state
+      type: object
   steps:
     - name: s-add-fbc-fragment-to-index-image
       image: >-
