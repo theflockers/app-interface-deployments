@@ -156,7 +156,7 @@ spec:
             esac
         done
         echo
-        jq '{ "state": .state, "state_reason": .state_reason }' $(results.jsonBuildInfo.path) \
+        jq -cr '{ "state": .state, "state_reason": .state_reason }' $(results.jsonBuildInfo.path) \
         | tee $(results.buildState.path)
         test \${state} = "complete" && exit 0 || exit 1
         SH
