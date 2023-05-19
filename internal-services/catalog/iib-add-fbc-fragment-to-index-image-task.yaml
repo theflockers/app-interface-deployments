@@ -53,7 +53,6 @@ spec:
       description: JSON build information for the requested build
     - name: buildState
       description: IIB Service build state
-      type: array
   steps:
     - name: s-add-fbc-fragment-to-index-image
       image: >-
@@ -168,6 +167,7 @@ spec:
         # as parameter.
         timeout $(params.buildTimeoutSeconds) ${TASKRUN}
         SYSEXIT=$?
+        cat $(results.buildState.path)
         if [ ${SYSEXIT} -eq 124 ]; then
             echo "Timeout while waiting for the build to finish"
             echo "Build timeout" < $(results.buildState.path)
