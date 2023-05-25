@@ -6,7 +6,6 @@ metadata:
     app: "hacbs-signing-pipeline"
     env: stage
     paas.redhat.com/appcode: RSIG-001
-    test: scott
   name: "hacbs-signing-pipeline-config"
 data:
   PYXIS_URL: "https://pyxis.stage.engineering.redhat.com"
