@@ -19,9 +19,6 @@ spec:
       type: string
       description: ->
         Index image (catalog of catalogs) the FBC fragment will be added to
-    - name: overwriteFromIndex
-      type: string
-      description: Boolean indicating if the from_index should be overwritten
     - name: binaryImage
       type: string
       description: ->
@@ -53,10 +50,12 @@ spec:
       description: JSON build information for the requested build
     - name: buildState
       description: IIB Service build state
+    - name: genericResult
+      description: Set the genericResult if FBC Fragment is Opt-In and should be published
   steps:
     - name: s-add-fbc-fragment-to-index-image
       image: >-
-        quay.io/hacbs-release/release-base-image@sha256:9e7fd1a3ccf0d2c8077f565c78e50862a7cc4792d548b5c01c8b09077e6d23a7
+        quay.io/hacbs-release/release-base-image@sha256:5968660e005b0c806dd2568b6c8b488b4b519ed33daa41211b9f9f2bde4faf35
       env:
         - name: IIB_SERVICE_URL
           valueFrom:
@@ -81,6 +80,52 @@ spec:
       script: |
         #!/usr/bin/env bash
         #
+        isFBCOptIn() {
+          TMPFILE=$(mktemp)
+          PYXIS_URL="https://pyxis.engineering.redhat.com/v1"
+
+          IFS="/" read REGISTRY REPO IMAGE <<< "${1}"
+          IFS=":" read IMAGE TAG <<< "${IMAGE}"
+
+          FETCH_URL="${PYXIS_URL}/repositories/registry/${REGISTRY}/repository/${REPO}/${IMAGE}/tag/${TAG}"
+
+          # strips the last "/tag" in case $TAG is not set
+          [ -z "${TAG}" ] && FETCH_URL=${FETCH_URL%/tag*}
+
+          echo "Attempting to fetch from ${FETCH_URL} to check if fragment is \`fbc_opt_in==true\`..."
+          curl --insecure --negotiate -u: "${FETCH_URL}" -o $TMPFILE
+          # prints "false" in case .fbc_opt_in entry is missing
+          jq -e -r '.fbc_opt_in //false' $TMPFILE && rm -f $TMPFILE
+        }
+
+        # performs kerberos authentication.
+        base64 -d /mnt/service-account-secret/keytab > /tmp/keytab
+
+        echo "${KRB5_CONF_CONTENT}" > /tmp/krb5.conf
+        export KRB5_CONFIG=/tmp/krb5.conf
+
+        /usr/bin/kinit -V $(cat /mnt/service-account-secret/principal) -k -t /tmp/keytab
+
+        # check if this fbc fragment is opt-in
+        echo "Fetching the image bundle from $(params.fbcFragment)..."
+        PULL_SPEC_LIST=$(opm render $(params.fbcFragment) | jq -r 'select(.schema == "olm.bundle") | "\(.image)" | split("@")[0]' |uniq)
+        for PULL_SPEC in ${PULL_SPEC_LIST}; do
+            # make sure they query is done using the internal name instead of the public
+            PULL_SPEC=$(sed  's/registry.redhat.io/registry.access.redhat.com/g' <<< $PULL_SPEC)
+            FBCOptIn+=(`isFBCOptIn ${PULL_SPEC}`)
+        done
+        FBCOptIn=$(echo ${FBCOptIn} |sort |uniq)
+
+        # in case of more than one image all should have the same fbc_opt_in value
+        if [ $(wc -w <<< ${FBCOptIn[@]}) -eq 1 ]; then
+            echo -en "fbc_opt_in=${FBCOptIn}" | tee $(results.genericResult.path)
+        else
+            FBCOptIn="false"
+            echo -en "fbc_opt_in=false" | tee $(results.genericResult.path)
+        fi
+
+        echo "Fragment has \`fbc_opt_in==${FBCOptIn}\`"
+
         # adds the json request parameters to a file to be used as input data
         # for curl and preventing shell expansion.
         json_input=/tmp/$$.tmp
@@ -93,7 +138,7 @@ spec:
           "binary_image": "$(params.binaryImage)",
           "build_tags": `echo $(params.buildTags)`,
           "add_arches": `echo $(params.addArches)`,
-          "overwrite_from_index": $(params.overwriteFromIndex),
+          "overwrite_from_index": ${FBCOptIn},
           "overwrite_from_index_token": "${IIB_OVERWRITE_FROM_INDEX_USERNAME}:${IIB_OVERWRITE_FROM_INDEX_TOKEN}"
         }
         JSON
@@ -101,19 +146,11 @@ spec:
         # filtering out empty params
         jq -r '
           if .binary_image == "" then del(.binary_image) else . end |
-          if .overwrite_from_index == "false" then del(( .overwrite_from_index, .overwrite_from_index_token)) else . end |
+          if .overwrite_from_index == false then del(( .overwrite_from_index, .overwrite_from_index_token)) else . end |
           if(.add_arches | length) == 0 then del(.add_arches) else . end |
           if(.build_tags | length) == 0 then del(.build_tags) else . end' ${json_raw_input} > ${json_input}
         
-        # performs kerberos authentication.
-        base64 -d /mnt/service-account-secret/keytab > /tmp/keytab
-        
-        echo "${KRB5_CONF_CONTENT}" > /tmp/krb5.conf
-        export KRB5_CONFIG=/tmp/krb5.conf
-        
-        /usr/bin/kinit -V $(cat /mnt/service-account-secret/principal) -k -t /tmp/keytab
-        
-        echo "Calling endpoint" > $(results.buildState.path)
+        echo "Calling IIB endpoint" > $(results.buildState.path)
         # adds image to the index.
         /usr/bin/curl -u : --negotiate -s -X POST -H "Content-Type: application/json" -d@${json_input} --insecure \
         "${IIB_SERVICE_URL}/builds/fbc-operations" |tee $(results.jsonBuildInfo.path)
@@ -125,7 +162,7 @@ spec:
           mountPath: /mnt/service-account-secret
     - name: s-wait-for-build-state
       image: >-
-        quay.io/hacbs-release/release-base-image@sha256:9e7fd1a3ccf0d2c8077f565c78e50862a7cc4792d548b5c01c8b09077e6d23a7
+        quay.io/hacbs-release/release-base-image@sha256:5968660e005b0c806dd2568b6c8b488b4b519ed33daa41211b9f9f2bde4faf35
       env:
         - name: IIB_SERVICE_URL
           valueFrom:
@@ -167,7 +204,6 @@ spec:
         # as parameter.
         timeout $(params.buildTimeoutSeconds) ${TASKRUN}
         SYSEXIT=$?
-        cat $(results.buildState.path)
         if [ ${SYSEXIT} -eq 124 ]; then
             echo "Timeout while waiting for the build to finish"
             echo "Build timeout" < $(results.buildState.path)
