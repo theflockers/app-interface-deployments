@@ -59,7 +59,7 @@ spec:
             - --leader-elect
             - --remote-cluster-config-file
             - /mnt/internal-services/remote-client-config/kubeconfig
-          image: quay.io/redhat-appstudio/internal-services:6e4f96e888cffdb725d79a34573dfc8914945442
+          image: quay.io/redhat-appstudio/internal-services:40b41cee037f27ce2d4dbd478f28a9fcf903ede5
           name: manager
           securityContext:
             allowPrivilegeEscalation: false
@@ -83,10 +83,10 @@ spec:
           resources:
             limits:
               cpu: 500m
-              memory: 1G
+              memory: 512Mi
             requests:
               cpu: 10m
-              memory: 1G
+              memory: 512Mi
           env:
             - name: SERVICE_NAMESPACE
               valueFrom:
