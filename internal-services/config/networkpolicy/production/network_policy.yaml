@@ -22,15 +22,11 @@ spec:
           protocol: TCP
     - to:
       - ipBlock:
-          cidr: 44.195.126.208/32  # Hypershift-Dev
-      ports:
-        - port: 6443
-        - port: 80
-        - port: 443
-          protocol: TCP
-    - to:
-      - ipBlock:
           cidr: 54.91.12.133/32  # RHTAP-Prod
+      - ipBlock:
+          cidr: 34.200.117.205/32
+      - ipBlock:
+          cidr: 54.159.168.255/32
       ports:
         - port: 6443
         - port: 80
