@@ -35,11 +35,6 @@ spec:
       type: string
       description: ->
         Index image (catalog of catalogs) the FBC fragment will be added to
-    - name: overwriteFromIndex
-      type: string
-      default: "false"
-      description: ->
-        Boolean indicating if the from_index should be overwritten
     - name: buildTags
       type: string
       default: '[]'
@@ -70,8 +65,6 @@ spec:
           value: $(params.fbcFragment)
         - name: fromIndex
           value: $(params.fromIndex)
-        - name: overwriteFromIndex
-          value: $(params.overwriteFromIndex)
         - name: buildTags
           value: $(params.buildTags)
         - name: addArches
@@ -83,3 +76,5 @@ spec:
       value: $(tasks.t-add-fbc-fragment-to-index-image.results.jsonBuildInfo)
     - name: buildState
       value: $(tasks.t-add-fbc-fragment-to-index-image.results.buildState)
+    - name: genericResult
+      value: $(tasks.t-add-fbc-fragment-to-index-image.results.genericResult)
