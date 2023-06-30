@@ -24,7 +24,6 @@ spec:
       description: Number of skopeo retries
     - name: publishingCredentials
       type: string
-      default: "fbc-publishing-credentials"
       description: The credentials used to access the registries
     - name: requestUpdateTimeout
       type: string
