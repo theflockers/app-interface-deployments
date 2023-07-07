@@ -39,9 +39,9 @@ spec:
     - name: iibServiceConfigSecret
       type: string
       description: Secret with IIB service config to be used
-    - name: iibFromImageOverwriteCredentials
+    - name: iibOverwriteFromIndexCredential
       type: string
-      description: Secret with overwrite FromImage credentials to be passed to IIB
+      description: Secret with overwrite FromIndex credentials to be passed to IIB
     - name: iibServiceAccountSecret
       type: string
       description: Secret with IIB credentials to be used
@@ -65,12 +65,12 @@ spec:
         - name: IIB_OVERWRITE_FROM_INDEX_USERNAME
           valueFrom:
             secretKeyRef:
-              name: $(params.iibFromImageOverwriteCredentials)
+              name: $(params.iibOverwriteFromIndexCredential)
               key: username
         - name: IIB_OVERWRITE_FROM_INDEX_TOKEN
           valueFrom:
             secretKeyRef:
-              name: $(params.iibFromImageOverwriteCredentials)
+              name: $(params.iibOverwriteFromIndexCredential)
               key: token
         - name: KRB5_CONF_CONTENT
           valueFrom:

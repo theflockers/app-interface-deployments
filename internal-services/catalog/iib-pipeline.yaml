@@ -18,12 +18,12 @@ spec:
       description: The Snapshot in JSON format
     - name: iibServiceConfigSecret
       type: string
-      description: Secret containing IIB service Config
       default: iib-services-config
-    - name: iibFromImageOverwriteCredentials
+      description: Secret containing IIB service Config
+    - name: iibOverwriteFromIndexCredential
       type: string
-      description: Secret with overwrite FromImage credentials to be passed to IIB
       default: iib-overwrite-fromimage-credentials
+      description: Secret with overwrite FromImage credentials to be passed to IIB
     - name: iibServiceAccountSecret
       type: string
       description: Secret containing the credentials for IIB service
@@ -57,8 +57,8 @@ spec:
           value: $(params.binaryImage)
         - name: iibServiceConfigSecret
           value: $(params.iibServiceConfigSecret)
-        - name: iibFromImageOverwriteCredentials
-          value: $(params.iibFromImageOverwriteCredentials)
+        - name: iibOverwriteFromIndexCredential
+          value: $(params.iibOverwriteFromIndexCredential)
         - name: iibServiceAccountSecret
           value: $(params.iibServiceAccountSecret)
         - name: fbcFragment
