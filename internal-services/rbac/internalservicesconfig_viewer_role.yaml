@@ -1,3 +1,4 @@
+---
 # permissions for end users to view internalservicesconfigs.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -11,17 +12,17 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: internalservicesconfig-viewer-role
 rules:
-- apiGroups:
-  - appstudio.redhat.com
-  resources:
-  - internalservicesconfigs
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - appstudio.redhat.com
-  resources:
-  - internalservicesconfigs/status
-  verbs:
-  - get
+  - apiGroups:
+      - appstudio.redhat.com
+    resources:
+      - internalservicesconfigs
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - appstudio.redhat.com
+    resources:
+      - internalservicesconfigs/status
+    verbs:
+      - get

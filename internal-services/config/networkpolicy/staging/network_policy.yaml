@@ -1,3 +1,4 @@
+---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -7,6 +8,6 @@ spec:
     matchLabels:
       control-plane: controller-manager
   policyTypes:
-  - Egress
+    - Egress
   egress:
     - {}  # allow all egress
