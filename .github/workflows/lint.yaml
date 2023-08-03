@@ -5,6 +5,8 @@ on:  # yamllint disable-line rule:truthy
     branches: ['main']
     types: ['opened', 'reopened', 'synchronize']
   workflow_dispatch:
+env:
+  TKN_CLI_VERSION: 0.30.1
 jobs:
   yamllint:
     runs-on: ubuntu-latest
@@ -19,8 +21,10 @@ jobs:
     steps:
       - name: checkout files
         uses: actions/checkout@v3
-      - name: install tkn
-        uses: ./.github/actions/install-tkn
+      - name: Install tkn cli
+        uses: jerop/tkn@v0.1.0
+        with:
+          version: v${TKN_CLI_VERSION}
       - name: Get changed files
         uses: tj-actions/changed-files@v35
         id: changed-files
