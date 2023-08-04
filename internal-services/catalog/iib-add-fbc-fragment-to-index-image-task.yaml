@@ -108,7 +108,8 @@ spec:
 
         # check if this fbc fragment is opt-in
         echo "Fetching the image bundle from $(params.fbcFragment)..."
-        PULL_SPEC_LIST=$(opm render $(params.fbcFragment) | jq -r 'select(.schema == "olm.bundle") | "\(.image)" | split("@")[0]' |uniq)
+        PULL_SPEC_LIST=$(opm render $(params.fbcFragment) | jq -r 'select(.schema == "olm.bundle") \
+          | "\(.image)" | split("@")[0]' |uniq)
         for PULL_SPEC in ${PULL_SPEC_LIST}; do
             # make sure they query is done using the internal name instead of the public
             PULL_SPEC=$(sed  's/registry.redhat.io/registry.access.redhat.com/g' <<< $PULL_SPEC)
@@ -142,19 +143,19 @@ spec:
           "overwrite_from_index_token": "${IIB_OVERWRITE_FROM_INDEX_USERNAME}:${IIB_OVERWRITE_FROM_INDEX_TOKEN}"
         }
         JSON
-        
+
         # filtering out empty params
         jq -r '
           if .binary_image == "" then del(.binary_image) else . end |
           if .overwrite_from_index == false then del(( .overwrite_from_index, .overwrite_from_index_token)) else . end |
           if(.add_arches | length) == 0 then del(.add_arches) else . end |
           if(.build_tags | length) == 0 then del(.build_tags) else . end' ${json_raw_input} > ${json_input}
-        
+
         echo "Calling IIB endpoint" > $(results.buildState.path)
         # adds image to the index.
         /usr/bin/curl -u : --negotiate -s -X POST -H "Content-Type: application/json" -d@${json_input} --insecure \
         "${IIB_SERVICE_URL}/builds/fbc-operations" |tee $(results.jsonBuildInfo.path)
-        
+
         # checks if the previous call returned an error.
         ! jq -e -r ".error | select( . != null )" $(results.jsonBuildInfo.path)
       volumeMounts:
