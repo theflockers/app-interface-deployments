@@ -1,4 +1,3 @@
----
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -11,7 +10,7 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: metrics-reader
 rules:
-  - nonResourceURLs:
-      - "/metrics"
-    verbs:
-      - get
+- nonResourceURLs:
+  - "/metrics"
+  verbs:
+  - get

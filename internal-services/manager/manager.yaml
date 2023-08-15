@@ -1,4 +1,3 @@
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -25,7 +24,7 @@ spec:
         control-plane: controller-manager
     spec:
       # TODO(user): Uncomment the following code to configure the nodeAffinity expression
-      # according to the platforms which are supported by your solution.
+      # according to the platforms which are supported by your solution. 
       # It is considered best practice to support multiple architectures. You can
       # build your manager image using the makefile target docker-buildx.
       # affinity:
@@ -60,7 +59,7 @@ spec:
             - --leader-elect
             - --remote-cluster-config-file
             - /mnt/internal-services/remote-client-config/kubeconfig
-          image: quay.io/redhat-appstudio/internal-services:71980580ec1a21a9df1f70f32e3be3ff9f19fb70
+          image: quay.io/redhat-appstudio/internal-services:6e5b44e8ecc556d4b27eee3426bcea7456004f29
           name: manager
           securityContext:
             allowPrivilegeEscalation: false
@@ -84,10 +83,10 @@ spec:
           resources:
             limits:
               cpu: 500m
-              memory: 1G
+              memory: 512Mi
             requests:
               cpu: 10m
-              memory: 1G
+              memory: 512Mi
           env:
             - name: SERVICE_NAMESPACE
               valueFrom:
