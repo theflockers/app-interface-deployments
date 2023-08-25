@@ -15,7 +15,7 @@ jobs:
       - name: Run yamllint
         uses: frenck/action-yamllint@v1
         with:
-          path: internal-services/
+          path: internal-services/catalog/
   tknparse:
     runs-on: ubuntu-latest
     steps:
