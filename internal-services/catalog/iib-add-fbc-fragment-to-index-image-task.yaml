@@ -28,10 +28,10 @@ spec:
       type: string
       description: ->
         List of additional tags the internal index image copy should be
-        tagged with
+        tagged with.
     - name: addArches
       type: string
-      description: List of arches the index image should be built for
+      description: List of arches the index image should be built for.
     - name: buildTimeoutSeconds
       type: string
       default: "300"
