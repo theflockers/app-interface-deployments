@@ -12,6 +12,9 @@ spec:
   description: >-
       Update files in a Git repository
   params:
+    - name: upstream_repo
+      type: string
+      description: Upstream Git repository
     - name: repo
       type: string
       description: Git repository
@@ -30,7 +33,7 @@ spec:
       description: fileUpdates state
   steps:
     - name: perform-updates
-      image: quay.io/hacbs-release/release-utils@sha256:17bf3669322362e3fef010bfb4f2b636a56e89d15880e027ca16eba3e6f9d16f
+      image: quay.io/hacbs-release/release-utils:df8d2074895a6ab9a2e433ee707ad475524dfc1e
       env:
         - name: GITLAB_HOST
           valueFrom:
@@ -68,6 +71,7 @@ spec:
           $(params.paths)
           JSON
 
+          UPSTREAM_REPO="$(params.upstream_repo)"
           REPO="$(params.repo)"
           REVISION="$(params.ref)"
 
@@ -119,8 +123,9 @@ spec:
 
           echo "Creating Pull Request..."
           GITLAB_MR_MSG="fileUpdates changes ${WORKING_BRANCH}"
-          gitlab_create_mr --head $REVISION --title "chore: ${GITLAB_MR_MSG}" \
-              --description "${GITLAB_MR_MSG}" > $(results.fileUpdatesInfo.path)
+          gitlab_create_mr --head $WORKING_BRANCH --target-branch $REVISION --title "chore: ${GITLAB_MR_MSG}" \
+              --description "${GITLAB_MR_MSG}" --upstream-repo "${UPSTREAM_REPO}"  \
+              | jq -c |jq -R |tee $(results.fileUpdatesInfo.path)
           echo "Success" |tee $(results.fileUpdatesState.path)
 
           echo -e "=== FINISHED. CLEANING UP ===\n"

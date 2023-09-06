@@ -12,6 +12,9 @@ spec:
   description: >-
       Tekton Pipeline to update files in Git repositories
   params:
+    - name: upstream_repo
+      type: string
+      description: Upstream Git repository
     - name: repo
       type: string
       description: Git repository
@@ -28,6 +31,8 @@ spec:
       taskRef:
         name: task-process-file-updates
       params:
+        - name: upstream_repo
+          value: $(params.upstream_repo)
         - name: repo
           value: $(params.repo)
         - name: ref
