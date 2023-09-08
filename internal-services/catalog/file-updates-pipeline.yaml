@@ -26,6 +26,9 @@ spec:
       description: |
           String containing a JSON array of file paths and its replacements
           E.g. '[{"path":"file1.yaml","replacements":[{"key":".yamlkey1,","replacement":"|regex|replace|"}]}]'
+    - name: application
+      type: string
+      description: Application being released
   tasks:
     - name: task-process-file-updates
       taskRef:
@@ -39,6 +42,8 @@ spec:
           value: $(params.ref)
         - name: paths
           value: $(params.paths)
+        - name: application
+          value: $(params.application)
   results:
     - name: jsonBuildInfo
       value: $(tasks.task-process-file-updates.results.fileUpdatesInfo)
