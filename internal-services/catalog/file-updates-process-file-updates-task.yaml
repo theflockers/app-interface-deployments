@@ -132,7 +132,7 @@ spec:
 
           echo "Creating Pull Request..."
           GITLAB_MR_MSG="[RHTAP release] $(params.application): fileUpdates changes ${WORKING_BRANCH}"
-          gitlab_create_mr --head $WORKING_BRANCH --target-branch $REVISION --title "chore: ${GITLAB_MR_MSG}" \
+          gitlab_create_mr --head $WORKING_BRANCH --target-branch $REVISION --title "${GITLAB_MR_MSG}" \
               --description "${GITLAB_MR_MSG}" --upstream-repo "${UPSTREAM_REPO}" | jq '. |tostring' \
               |tee $(results.fileUpdatesInfo.path)
 
