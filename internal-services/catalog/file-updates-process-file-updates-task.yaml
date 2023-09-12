@@ -12,6 +12,9 @@ spec:
   description: >-
       Update files in a Git repository
   params:
+    - name: upstream_repo
+      type: string
+      description: Upstream Git repository
     - name: repo
       type: string
       description: Git repository
@@ -23,6 +26,9 @@ spec:
       description: |
           String containing a JSON array of file paths and its replacements
           E.g. '[{"path":"file1.yaml","replacements":[{"key":".yamlkey1,","replacement":"|regex|replace|"}]}]'
+    - name: application
+      type: string
+      description: Application being released
   results:
     - name: fileUpdatesInfo
       description: fileUpdates detailed information
@@ -30,7 +36,7 @@ spec:
       description: fileUpdates state
   steps:
     - name: perform-updates
-      image: quay.io/hacbs-release/release-utils@sha256:17bf3669322362e3fef010bfb4f2b636a56e89d15880e027ca16eba3e6f9d16f
+      image: quay.io/hacbs-release/release-utils:06643f9e7c2b6ddf5e095bc735ce7c308793815d
       env:
         - name: GITLAB_HOST
           valueFrom:
@@ -60,21 +66,28 @@ spec:
           . /home/utils/gitlab-functions
           . /home/utils/git-functions
 
+          TEMP=$(mktemp -d /tmp/file-updates.XXXX)
+
           gitlab_init
+          git_functions_init
 
           # saves the params.paths json to a file
-          updatePathsTmpfile="/tmp/updatePaths.json"
+          updatePathsTmpfile="${TEMP}/updatePaths.json"
           cat > "${updatePathsTmpfile}" << JSON
           $(params.paths)
           JSON
 
+          UPSTREAM_REPO="$(params.upstream_repo)"
           REPO="$(params.repo)"
           REVISION="$(params.ref)"
 
           echo -e "=== UPDATING ${REPO} ON BRANCH ${REVISION} ===\n"
 
-          cd /tmp/
+          cd "${TEMP}"
           git_clone_and_checkout --repository "${REPO}" --revision "${REVISION}"
+
+          # updating local branch with the upstream
+          git_rebase -n "glab-base" -r "${UPSTREAM_REPO}" -v "${REVISION}"
 
           # getting the files that have replacements
           PATHS_LENGTH="$(jq '. | length' ${updatePathsTmpfile})"
@@ -118,11 +131,12 @@ spec:
           git_commit_and_push --branch $WORKING_BRANCH --message "fileUpdates changes"
 
           echo "Creating Pull Request..."
-          GITLAB_MR_MSG="fileUpdates changes ${WORKING_BRANCH}"
-          gitlab_create_mr --head $REVISION --title "chore: ${GITLAB_MR_MSG}" \
-              --description "${GITLAB_MR_MSG}" > $(results.fileUpdatesInfo.path)
+          GITLAB_MR_MSG="[RHTAP release] $(params.application): fileUpdates changes ${WORKING_BRANCH}"
+          gitlab_create_mr --head $WORKING_BRANCH --target-branch $REVISION --title "${GITLAB_MR_MSG}" \
+              --description "${GITLAB_MR_MSG}" --upstream-repo "${UPSTREAM_REPO}" | jq '. |tostring' \
+              |tee $(results.fileUpdatesInfo.path)
+
           echo "Success" |tee $(results.fileUpdatesState.path)
 
           echo -e "=== FINISHED. CLEANING UP ===\n"
-          cd /tmp
-          rm -rf ${OLDPWD}
+          rm -rf ${TEMP}

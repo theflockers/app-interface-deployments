@@ -28,10 +28,10 @@ spec:
       type: string
       description: ->
         List of additional tags the internal index image copy should be
-        tagged with
+        tagged with.
     - name: addArches
       type: string
-      description: List of arches the index image should be built for
+      description: List of arches the index image should be built for.
     - name: buildTimeoutSeconds
       type: string
       default: "300"
@@ -108,8 +108,8 @@ spec:
 
         # check if this fbc fragment is opt-in
         echo "Fetching the image bundle from $(params.fbcFragment)..."
-        PULL_SPEC_LIST=$(opm render $(params.fbcFragment) | jq -r 'select(.schema == "olm.bundle") \
-          | "\(.image)" | split("@")[0]' |uniq)
+        PULL_SPEC_LIST=$(opm render $(params.fbcFragment) | jq -r \
+        'select(.schema == "olm.bundle") | "\(.image)" | split("@")[0]' |uniq)
         for PULL_SPEC in ${PULL_SPEC_LIST}; do
             # make sure they query is done using the internal name instead of the public
             PULL_SPEC=$(sed  's/registry.redhat.io/registry.access.redhat.com/g' <<< $PULL_SPEC)
