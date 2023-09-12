@@ -55,7 +55,7 @@ spec:
   steps:
     - name: s-add-fbc-fragment-to-index-image
       image: >-
-        quay.io/hacbs-release/release-base-image@sha256:5968660e005b0c806dd2568b6c8b488b4b519ed33daa41211b9f9f2bde4faf35
+        quay.io/hacbs-release/release-utils:06643f9e7c2b6ddf5e095bc735ce7c308793815d
       env:
         - name: IIB_SERVICE_URL
           valueFrom:
@@ -163,7 +163,7 @@ spec:
           mountPath: /mnt/service-account-secret
     - name: s-wait-for-build-state
       image: >-
-        quay.io/hacbs-release/release-base-image@sha256:5968660e005b0c806dd2568b6c8b488b4b519ed33daa41211b9f9f2bde4faf35
+        quay.io/hacbs-release/release-utils:06643f9e7c2b6ddf5e095bc735ce7c308793815d
       env:
         - name: IIB_SERVICE_URL
           valueFrom:
