@@ -59,7 +59,7 @@ spec:
             - --leader-elect
             - --remote-cluster-config-file
             - /mnt/internal-services/remote-client-config/kubeconfig
-          image: quay.io/redhat-appstudio/internal-services:9081b3263045123545550e03c16392e6e0926d93
+          image: quay.io/redhat-appstudio/internal-services:9e15d5285a9ff723420ea5a8eb00487bcb3118ad
           name: manager
           securityContext:
             allowPrivilegeEscalation: false
@@ -78,6 +78,8 @@ spec:
               port: 8081
             initialDelaySeconds: 5
             periodSeconds: 10
+          # TODO(user): Configure the resources accordingly based on the project requirements.
+          # More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
           resources:
             limits:
               cpu: 500m
