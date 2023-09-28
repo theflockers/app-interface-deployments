@@ -98,6 +98,13 @@ spec:
               # the actual yaml data starts excluding comments
               blankLinesBeforeYaml="$(awk '/[[:alpha:]]+/{ if(! match($0, "^#")) { print NR-1; exit } }' ${targetFile})"
 
+              # check if the targetFile is a valid yaml file
+              if ! yq ${targetFile} >/dev/null 2>&1; then
+                  echo "fileUpdates: the targetFile ${targetFile} is not a yaml file" | \
+                  tee $(results.fileUpdatesInfo.path)
+                  exit 1
+              fi
+
               # getting the replacements for the file
               REPLACEMENTS_LENGTH="$(jq -cr ".[${PATH_INDEX}].replacements | length" ${updatePathsTmpfile})"
               for (( REPLACEMENT_INDEX=0; REPLACEMENT_INDEX < $REPLACEMENTS_LENGTH; REPLACEMENT_INDEX++ )); do
@@ -118,10 +125,43 @@ spec:
                   valueSize="$(yq "${key}" ${targetFile} |wc -l)"
                   startBlock=$(( ${foundAt} + ${blankLinesBeforeYaml} ))
 
+                  # the replacement should be a sed expression using "|" as separator
+                  if [[ $(tr -dc "|" <<< "${replacement}" | wc -m ) != 3 ]]; then
+                      updateError='Replace expression should be in `|search|replace|` format'
+                      break
+                  fi
+
                   # run the replace
                   sed -i "${startBlock},+${valueSize}s${replacement}" "${targetFile}"
+
+                  # get the replace part of "|search|replace|"
+                  replaceStr=$(awk -F"|" '{print $3}' <<< "${replacement}")
+
+                  # when the value is a text block we must make sure
+                  # only a single line was replaced and that the result
+                  # block has the same number of lines as before
+                  replacedBlockLines=$(sed -ne "${startBlock},+${valueSize}p" "${targetFile}" |wc -l)
+                  if [[ $replacedBlockLines != $(( $valueSize +1 )) ]]; then
+                      updateError="Text block size differs from the original"
+                      break
+                  fi
+
+                  # check if only a single line was replaced
+                  replacedCount=$(sed -ne "${startBlock},+${valueSize}p" "${targetFile}" |grep "${replaceStr}"  |wc -l)
+                  if [[ $replacedCount != 1 ]]; then
+                      updateError="Too many lines replaced. Check the replace expression"
+                      break
+                  fi
               done
           done
+
+          if [ -n "${updateError}" ]; then
+          yq -o json <<< "error: ${updateError}" |tee $(results.fileUpdatesInfo.path)
+            echo "Failed" |tee $(results.fileUpdatesState.path)
+            # it should exit 0 otherwise the task does not set the results
+            # this way the InternalRequest can see what was wrong
+            exit 0
+          fi
 
           echo -e "\n*** START LOCAL CHANGES ***\n"
           git diff
@@ -133,7 +173,7 @@ spec:
           echo "Creating Pull Request..."
           GITLAB_MR_MSG="[RHTAP release] $(params.application): fileUpdates changes ${WORKING_BRANCH}"
           gitlab_create_mr --head $WORKING_BRANCH --target-branch $REVISION --title "${GITLAB_MR_MSG}" \
-              --description "${GITLAB_MR_MSG}" --upstream-repo "${UPSTREAM_REPO}" | jq '. |tostring' \
+              --description "${GITLAB_MR_MSG}" --upstream-repo "${UPSTREAM_REPO}" | jq '. | tostring' \
               |tee $(results.fileUpdatesInfo.path)
 
           echo "Success" |tee $(results.fileUpdatesState.path)
