@@ -36,7 +36,7 @@ spec:
       description: fileUpdates state
   steps:
     - name: perform-updates
-      image: quay.io/hacbs-release/release-utils:06643f9e7c2b6ddf5e095bc735ce7c308793815d
+      image: quay.io/hacbs-release/release-utils:2716cf0a7853d9d55ec4a56b052ac4b57fef4fdc
       env:
         - name: GITLAB_HOST
           valueFrom:
@@ -114,15 +114,18 @@ spec:
 
                   # getting the key's position
                   echo -en "Searching for key \`${key}\`: "
-                  foundAt="$(yq "${key} | line" ${targetFile})"
+                  yq "${key} | (line, .)" ${targetFile} > ${TEMP}/found.txt
+                  cat ${TEMP}/found.txt
+                  foundAt=$(head -n 1 ${TEMP}/found.txt)
                   if (( ${foundAt} == 0 )); then
                       echo "NOT FOUND"
                       continue
                   fi
                   echo "FOUND"
 
+                  sed -i '1d' ${TEMP}/found.txt
                   # getting the value size (in number of lines)
-                  valueSize="$(yq "${key}" ${targetFile} |wc -l)"
+                  valueSize=$(yq "${key}" ${targetFile} |wc -l)
                   startBlock=$(( ${foundAt} + ${blankLinesBeforeYaml} ))
 
                   # the replacement should be a sed expression using "|" as separator
@@ -140,7 +143,10 @@ spec:
                   # when the value is a text block we must make sure
                   # only a single line was replaced and that the result
                   # block has the same number of lines as before
-                  replacedBlockLines=$(sed -ne "${startBlock},+${valueSize}p" "${targetFile}" |wc -l)
+                  sed -ne "${startBlock},+${valueSize}p" "${targetFile}" > ${TEMP}/result.txt
+                  diff -u ${TEMP}/{found,result}.txt > ${TEMP}/diff.txt || true
+
+                  replacedBlockLines=$(cat ${TEMP}/result.txt | wc -l)
                   if [[ $replacedBlockLines != $(( $valueSize +1 )) ]]; then
                       updateError="Text block size differs from the original"
                       break
@@ -149,18 +155,23 @@ spec:
                   # check if only a single line was replaced
                   replacedCount=$(sed -ne "${startBlock},+${valueSize}p" "${targetFile}" |grep "${replaceStr}"  |wc -l)
                   if [[ $replacedCount != 1 ]]; then
-                      updateError="Too many lines replaced. Check the replace expression"
+                      updateError="Too many lines replaced. Check if the replace expression isn't too greedy"
                       break
                   fi
               done
           done
 
           if [ -n "${updateError}" ]; then
-          yq -o json <<< "error: ${updateError}" |tee $(results.fileUpdatesInfo.path)
-            echo "Failed" |tee $(results.fileUpdatesState.path)
-            # it should exit 0 otherwise the task does not set the results
-            # this way the InternalRequest can see what was wrong
-            exit 0
+              tempdiff=$(cat ${TEMP}/diff.txt)
+              # we need to limit the size to due to the max result buffer
+              diff=${tempdiff:1:3700} \
+              error="${updateError}" \
+              yq -o json --null-input '.str = strenv(diff), .error = strenv(error)' \
+              | tee $(results.fileUpdatesInfo.path)
+              echo "Failed" |tee $(results.fileUpdatesState.path)
+              # it should exit 0 otherwise the task does not set the results
+              # this way the InternalRequest can see what was wrong
+              exit 0
           fi
 
           echo -e "\n*** START LOCAL CHANGES ***\n"
