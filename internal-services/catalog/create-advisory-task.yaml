@@ -1,0 +1,115 @@
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: create-advisory-task
+  labels:
+    app.kubernetes.io/version: "0.1"
+  annotations:
+    tekton.dev/pipelines.minVersion: "0.12.1"
+    tekton.dev/tags: release
+spec:
+  description: |
+      Pushes an advisory yaml to a Git repository.
+      The task will always exit 0 even if something fails. This is because the task result will not be
+      set if the task fails, and the task result should always be set and propagated back to the cluster
+      that creates the internal request. The success/failure is handled in the task creating the internal
+      request.
+  params:
+    - name: advisory_json
+      type: string
+      description: |
+          String containing a JSON representation of the advisory data. It should not contain the `advisory`
+          top level key (e.g. '{"spec":{"product_id":123,"type":"RHSA"}}')
+    - name: application
+      type: string
+      description: Application being released
+    - name: origin
+      type: string
+      description: |
+          The origin workspace where the release CR comes from.
+          This is used to determine the advisory path
+  results:
+    - name: result
+      description: Success if the task succeeds, the error otherwise
+  steps:
+    - name: create-advisory
+      image: quay.io/hacbs-release/release-utils:518c0423a3b3502c7b9ef6fd8652995bec2b4e1a
+      env:
+        - name: GITLAB_HOST
+          valueFrom:
+            secretKeyRef:
+              name: create-advisory-secret
+              key: gitlab_host
+        - name: ACCESS_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: create-advisory-secret
+              key: gitlab_access_token
+        - name: GIT_AUTHOR_NAME
+          valueFrom:
+            secretKeyRef:
+              name: create-advisory-secret
+              key: git_author_name
+        - name: GIT_AUTHOR_EMAIL
+          valueFrom:
+            secretKeyRef:
+              name: create-advisory-secret
+              key: git_author_email
+      script: |
+          #!/usr/bin/env sh
+          set -ox pipefail
+
+          # This should get overwritten if any command fails
+          echo -n "Success" > $(results.result.path)
+
+          failfunc() {
+              local err=$1
+              local line=$2
+              local command="$3"
+              echo -n "$0: ERROR '$command' failed at line $line - exited with status $err" > $(results.result.path)
+              exit 0 # exit the script cleanly as there is no point in proceeding past an error
+          }
+          trap 'failfunc $? $LINENO "$BASH_COMMAND"' ERR # the task should never fail with nonzero exit code
+
+          REPO_BRANCH=main
+          REPO=$(jq -r '.repo' <<< '$(params.advisory_json)')
+
+          # loading git and gitlab functions
+          . /home/utils/gitlab-functions
+          . /home/utils/git-functions
+          gitlab_init
+          git_functions_init
+
+          function get_advisory_num {
+              # This function will skip many advisory numbers as it is so tied to date. Need to
+              # discover if skipping advisory numbers like this is okay.
+              # There is also a race condition picking the advisory number like this.
+              EXISTING=$(for advisory in $(find data/advisories/*/${1} -name "advisory.yaml") ; do
+                  yq '.metadata.name' $advisory | grep ":${2}" || true
+              done | sort -r | head -n 1)
+              if [[ ! -z "$EXISTING" ]] ; then
+                  echo "${2}$((${EXISTING:9}+1))" # Strip first 9 chars for YYYY:MMDD then add 1
+                  return
+              fi
+              echo "${2}0" # First advisory of the day
+          }
+
+          # This also cds into the git repo
+          git_clone_and_checkout --repository "$REPO" --revision "$REPO_BRANCH"
+
+          YEAR=$(date '+%Y')
+          ADVISORY_DIR="data/advisories/$(params.origin)/${YEAR}" # group advisories by <origin workspace>/year
+          ADVISORY_NUM=$(get_advisory_num $YEAR $(date '+%m%d'))
+          ADVISORY_NAME="${YEAR}:${ADVISORY_NUM}"
+          ADVISORY_FILEPATH="${ADVISORY_DIR}/${ADVISORY_NUM}/advisory.yaml"
+          mkdir -p "${ADVISORY_DIR}/${ADVISORY_NUM}"
+
+          # Create advisory file
+          /home/utils/apply_template.py -o $ADVISORY_FILEPATH --template /home/templates/advisory.yaml.jinja \
+          --data '{"advisory_name":"'$ADVISORY_NAME'","advisory":$(params.advisory_json)}'
+
+          git add ${ADVISORY_FILEPATH}
+          git commit -m "[RHTAP Release] $(params.application): new advisory ${ADVISORY_NAME}"
+          echo "Pushing to ${REPO_BRANCH}..."
+          git push origin $REPO_BRANCH
