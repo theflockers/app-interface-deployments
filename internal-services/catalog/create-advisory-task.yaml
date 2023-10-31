@@ -4,7 +4,7 @@ kind: Task
 metadata:
   name: create-advisory-task
   labels:
-    app.kubernetes.io/version: "0.1"
+    app.kubernetes.io/version: "0.2"
   annotations:
     tekton.dev/pipelines.minVersion: "0.12.1"
     tekton.dev/tags: release
@@ -34,7 +34,7 @@ spec:
       description: Success if the task succeeds, the error otherwise
   steps:
     - name: create-advisory
-      image: quay.io/hacbs-release/release-utils:518c0423a3b3502c7b9ef6fd8652995bec2b4e1a
+      image: quay.io/hacbs-release/release-utils:6fe50b65600418f9b046c32733fc896a4df02d41
       env:
         - name: GITLAB_HOST
           valueFrom:
@@ -81,35 +81,18 @@ spec:
           gitlab_init
           git_functions_init
 
-          function get_advisory_num {
-              # This function will skip many advisory numbers as it is so tied to date. Need to
-              # discover if skipping advisory numbers like this is okay.
-              # There is also a race condition picking the advisory number like this.
-              EXISTING=$(for advisory in $(find data/advisories/*/${1} -name "advisory.yaml") ; do
-                  yq '.metadata.name' $advisory | grep ":${2}" || true
-              done | sort -r | head -n 1)
-              if [[ ! -z "$EXISTING" ]] ; then
-                  echo "${2}$((${EXISTING:9}+1))" # Strip first 9 chars for YYYY:MMDD then add 1
-                  return
-              fi
-              echo "${2}0" # First advisory of the day
-          }
-
           # This also cds into the git repo
           git_clone_and_checkout --repository "$REPO" --revision "$REPO_BRANCH"
 
-          YEAR=$(date '+%Y')
-          ADVISORY_DIR="data/advisories/$(params.origin)/${YEAR}" # group advisories by <origin workspace>/year
-          ADVISORY_NUM=$(get_advisory_num $YEAR $(date '+%m%d'))
-          ADVISORY_NAME="${YEAR}:${ADVISORY_NUM}"
-          ADVISORY_FILEPATH="${ADVISORY_DIR}/${ADVISORY_NUM}/advisory.yaml"
-          mkdir -p "${ADVISORY_DIR}/${ADVISORY_NUM}"
+          ADVISORY_DIR="staging/advisories/$(params.origin)/$(date '+%Y')" # group advisories by <origin workspace>/year
+          mkdir -p "${ADVISORY_DIR}"
+          ADVISORY_FILEPATH="${ADVISORY_DIR}/$(uuidgen).yaml"
 
           # Create advisory file
           /home/utils/apply_template.py -o $ADVISORY_FILEPATH --template /home/templates/advisory.yaml.jinja \
-          --data '{"advisory_name":"'$ADVISORY_NAME'","advisory":$(params.advisory_json)}'
+          --data '{"advisory":$(params.advisory_json)}'
 
           git add ${ADVISORY_FILEPATH}
-          git commit -m "[RHTAP Release] $(params.application): new advisory ${ADVISORY_NAME}"
+          git commit -m "[RHTAP Release] new advisory for $(params.application)"
           echo "Pushing to ${REPO_BRANCH}..."
-          git push origin $REPO_BRANCH
+          git_push_with_retries --branch $REPO_BRANCH --retries 5 --url origin
