@@ -41,6 +41,9 @@ spec:
             secretKeyRef:
               name: create-advisory-secret
               key: gitlab_host
+        # This is a GitLab Project access token. Go to the settings/access_tokens page
+        # of your repository to create one. It should have the Developer role with read
+        # and write repository rights.
         - name: ACCESS_TOKEN
           valueFrom:
             secretKeyRef:
