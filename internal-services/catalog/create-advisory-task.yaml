@@ -34,7 +34,7 @@ spec:
       description: Success if the task succeeds, the error otherwise
   steps:
     - name: create-advisory
-      image: quay.io/hacbs-release/release-utils:6fe50b65600418f9b046c32733fc896a4df02d41
+      image: quay.io/redhat-appstudio/release-service-utils:a53a795550a73046617c9e3dff5ab0b8d3a45d6e
       env:
         - name: GITLAB_HOST
           valueFrom:
