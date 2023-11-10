@@ -1,0 +1,103 @@
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: create-advisory-task
+  labels:
+    app.kubernetes.io/version: "0.2"
+  annotations:
+    tekton.dev/pipelines.minVersion: "0.12.1"
+    tekton.dev/tags: release
+spec:
+  description: |
+      Pushes an advisory yaml to a Git repository.
+      The task will always exit 0 even if something fails. This is because the task result will not be
+      set if the task fails, and the task result should always be set and propagated back to the cluster
+      that creates the internal request. The success/failure is handled in the task creating the internal
+      request.
+  params:
+    - name: advisory_json
+      type: string
+      description: |
+          String containing a JSON representation of the advisory data. It should not contain the `advisory`
+          top level key (e.g. '{"spec":{"product_id":123,"type":"RHSA"}}')
+    - name: application
+      type: string
+      description: Application being released
+    - name: origin
+      type: string
+      description: |
+          The origin workspace where the release CR comes from.
+          This is used to determine the advisory path
+  results:
+    - name: result
+      description: Success if the task succeeds, the error otherwise
+  steps:
+    - name: create-advisory
+      image: quay.io/redhat-appstudio/release-service-utils:a53a795550a73046617c9e3dff5ab0b8d3a45d6e
+      env:
+        - name: GITLAB_HOST
+          valueFrom:
+            secretKeyRef:
+              name: create-advisory-secret
+              key: gitlab_host
+        # This is a GitLab Project access token. Go to the settings/access_tokens page
+        # of your repository to create one. It should have the Developer role with read
+        # and write repository rights.
+        - name: ACCESS_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: create-advisory-secret
+              key: gitlab_access_token
+        - name: GIT_AUTHOR_NAME
+          valueFrom:
+            secretKeyRef:
+              name: create-advisory-secret
+              key: git_author_name
+        - name: GIT_AUTHOR_EMAIL
+          valueFrom:
+            secretKeyRef:
+              name: create-advisory-secret
+              key: git_author_email
+      script: |
+          #!/usr/bin/env sh
+          set -eo pipefail
+
+          exitfunc() {
+              local err=$1
+              local line=$2
+              local command="$3"
+              if [ $err -eq 0 ] ; then
+                  echo -n "Success" > $(results.result.path)
+              else
+                  echo -n "$0: ERROR '$command' failed at line $line - exited with status $err" > $(results.result.path)
+              fi
+              exit 0 # exit the script cleanly as there is no point in proceeding past an error or exit call
+          }
+          # due to set -e, this catches all EXIT and ERR calls and the task should never fail with nonzero exit code
+          trap 'exitfunc $? $LINENO "$BASH_COMMAND"' EXIT
+
+          REPO_BRANCH=main
+          REPO=$(jq -r '.repo' <<< '$(params.advisory_json)')
+
+          # loading git and gitlab functions
+          . /home/utils/gitlab-functions
+          . /home/utils/git-functions
+          gitlab_init
+          git_functions_init
+
+          # This also cds into the git repo
+          git_clone_and_checkout --repository "$REPO" --revision "$REPO_BRANCH"
+
+          ADVISORY_DIR="staging/advisories/$(params.origin)/$(date '+%Y')" # group advisories by <origin workspace>/year
+          mkdir -p "${ADVISORY_DIR}"
+          ADVISORY_FILEPATH="${ADVISORY_DIR}/$(uuidgen).yaml"
+
+          # Create advisory file
+          /home/utils/apply_template.py -o $ADVISORY_FILEPATH --template /home/templates/advisory.yaml.jinja \
+          --data '{"advisory":$(params.advisory_json)}'
+
+          git add ${ADVISORY_FILEPATH}
+          git commit -m "[RHTAP Release] new advisory for $(params.application)"
+          echo "Pushing to ${REPO_BRANCH}..."
+          git_push_with_retries --branch $REPO_BRANCH --retries 5 --url origin
