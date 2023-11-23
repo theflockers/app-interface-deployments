@@ -7,11 +7,11 @@ metadata:
     app: "hacbs-signing-pipeline"
     env: production
     paas.redhat.com/appcode: RSIG-001
-  name: "hacbs-signing-pipeline-config"
+  name: "hacbs-signing-pipeline-config-redhatbeta2"
 data:
   PYXIS_URL: "https://pyxis.engineering.redhat.com"
-  SIG_KEY_ID: "B906BA72"
-  SIG_KEY_NAME: "openshifthosted"
+  SIG_KEY_ID: "4096R/F21541EB SHA-256"
+  SIG_KEY_NAME: "beta2"
   SSL_CERT_FILE_NAME: "hacbs-signing-pipeline.pem"
   SSL_CERT_SECRET_NAME: "hacbs-signing-pipeline-certs"
   SSL_KEY_FILE_NAME: "hacbs-signing-pipeline.key"
