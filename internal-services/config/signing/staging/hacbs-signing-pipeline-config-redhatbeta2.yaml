@@ -7,7 +7,7 @@ metadata:
     app: "hacbs-signing-pipeline"
     env: stage
     paas.redhat.com/appcode: RSIG-001
-  name: "hacbs-signing-pipeline-config"
+  name: "hacbs-signing-pipeline-config-redhatbeta2"
 data:
   PYXIS_URL: "https://pyxis.stage.engineering.redhat.com"
   SIG_KEY_ID: "4096R/37036783 SHA-256"
