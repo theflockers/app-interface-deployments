@@ -4,7 +4,7 @@ kind: Task
 metadata:
   name: t-add-fbc-fragment-to-index-image
   labels:
-    app.kubernetes.io/version: "0.1"
+    app.kubernetes.io/version: "0.2.0"
   annotations:
     tekton.dev/pipelines.minVersion: "0.12.1"
     tekton.dev/tags: release
@@ -49,6 +49,10 @@ spec:
       type: string
       default: "false"
       description: Whether this build is a hotfix build
+    - name: stagedIndex
+      type: string
+      default: "false"
+      description: Whether this build is for a staged index build
   results:
     - name: jsonBuildInfo
       description: JSON build information for the requested build
@@ -130,15 +134,23 @@ spec:
             fbcOptIn="false"
             mustSignIndexImage="true"
             mustPublishIndexImage="true"
-        else
-            echo "Fragment has \`fbc_opt_in==${fbcOptIn}\`"
-            # in case of more than one image all should have the same fbc_opt_in value
-            if [ $(wc -w <<< ${fbcOptIn[@]}) -ne 1 ]; then
-                fbcOptIn="false"
-                mustSignIndexImage="false"
-                mustPublishIndexImage="false"
-            fi
+        elif [ "$(params.stagedIndex)" == "true" ]; then
+            echo "Staged Index build"
+            fbcOptIn="false"
+            mustSignIndexImage="false"
+            mustPublishIndexImage="false"
+
+        # in case of more than one image all should have the same fbc_opt_in value
+        elif [ $(wc -w <<< ${fbcOptIn[@]}) -ne 1 ]; then
+            fbcOptIn="false"
+            mustSignIndexImage="false"
+            mustPublishIndexImage="false"
         fi
+
+        echo "Fragment has \`fbc_opt_in==${fbcOptIn}\`"
+        echo "             \`mustPublishIndexImage==${mustPublishIndexImage}\`"
+        echo "             \`mustSignIndexImage==${mustSignIndexImage}\`"
+
         jq -n -c \
            --arg fbc_opt_in "${fbcOptIn}" \
            --arg publish_index_image "${mustPublishIndexImage}" \
