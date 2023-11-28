@@ -49,6 +49,10 @@ spec:
       type: string
       default: "false"
       description: Whether this build is a hotfix build
+    - name: stagedIndex
+      type: string
+      default: "false"
+      description: Whether this build is a staged index build
     - name: buildTimeoutSeconds
       type: string
       description: IIB Build Service timeout seconds
@@ -75,6 +79,8 @@ spec:
           value: $(params.addArches)
         - name: hotfix
           value: $(params.hotfix)
+        - name: stagedIndex
+          value: $(params.stagedIndex)
         - name: buildTimeoutSeconds
           value: $(params.buildTimeoutSeconds)
   results:
