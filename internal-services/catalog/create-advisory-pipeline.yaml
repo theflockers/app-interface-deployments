@@ -16,7 +16,7 @@ spec:
       type: string
       description: |
           String containing a JSON representation of the advisory data. It should not contain the `advisory`
-          top level key (e.g. '{"repo":"myrepo","spec":{"product_id":123,"type":"RHSA"}}')
+          top level key (e.g. '{"product_id":123,"type":"RHSA"}')
     - name: application
       type: string
       description: Application being released

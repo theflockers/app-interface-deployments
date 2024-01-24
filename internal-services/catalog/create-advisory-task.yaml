@@ -4,7 +4,7 @@ kind: Task
 metadata:
   name: create-advisory-task
   labels:
-    app.kubernetes.io/version: "0.2"
+    app.kubernetes.io/version: "0.3"
   annotations:
     tekton.dev/pipelines.minVersion: "0.12.1"
     tekton.dev/tags: release
@@ -95,7 +95,7 @@ spec:
 
           # Create advisory file
           /home/utils/apply_template.py -o $ADVISORY_FILEPATH --template /home/templates/advisory.yaml.jinja \
-          --data '{"advisory":$(params.advisory_json)}'
+          --data '{"advisory":{"spec":$(params.advisory_json)}}'
 
           git add ${ADVISORY_FILEPATH}
           git commit -m "[RHTAP Release] new advisory for $(params.application)"
