@@ -4,7 +4,7 @@ kind: Task
 metadata:
   name: create-advisory-task
   labels:
-    app.kubernetes.io/version: "0.3"
+    app.kubernetes.io/version: "0.4"
   annotations:
     tekton.dev/pipelines.minVersion: "0.12.1"
     tekton.dev/tags: release
@@ -34,7 +34,7 @@ spec:
       description: Success if the task succeeds, the error otherwise
   steps:
     - name: create-advisory
-      image: quay.io/redhat-appstudio/release-service-utils:a53a795550a73046617c9e3dff5ab0b8d3a45d6e
+      image: quay.io/redhat-appstudio/release-service-utils:84e35393a088450f337ad3f1e98a5614368c8154
       env:
         - name: GITLAB_HOST
           valueFrom:
