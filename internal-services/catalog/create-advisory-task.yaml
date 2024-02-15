@@ -4,7 +4,7 @@ kind: Task
 metadata:
   name: create-advisory-task
   labels:
-    app.kubernetes.io/version: "0.4"
+    app.kubernetes.io/version: "0.5"
   annotations:
     tekton.dev/pipelines.minVersion: "0.12.1"
     tekton.dev/tags: release
@@ -19,8 +19,7 @@ spec:
     - name: advisory_json
       type: string
       description: |
-          String containing a JSON representation of the advisory data. It should not contain the `advisory`
-          top level key (e.g. '{"spec":{"product_id":123,"type":"RHSA"}}')
+          String containing a JSON representation of the advisory data (e.g. '{"product_id":123,"type":"RHSA"}').
     - name: application
       type: string
       description: Application being released
@@ -29,6 +28,9 @@ spec:
       description: |
           The origin workspace where the release CR comes from.
           This is used to determine the advisory path
+    - name: config_map_name
+      type: string
+      description: The name of the configMap that contains the signing key
   results:
     - name: result
       description: Success if the task succeeds, the error otherwise
@@ -93,9 +95,14 @@ spec:
           mkdir -p "${ADVISORY_DIR}"
           ADVISORY_FILEPATH="${ADVISORY_DIR}/$(uuidgen).yaml"
 
+          # Inject signing key into advisory_json
+          signingKey=$(kubectl get configmap $(params.config_map_name) -o jsonpath="{.data.SIG_KEY_NAME}")
+          advisoryJsonWithKey=$(jq -c --arg key "$signingKey" \
+            '.content.images[] += {"signingKey": $key}' <<< '$(params.advisory_json)')
+
           # Create advisory file
           /home/utils/apply_template.py -o $ADVISORY_FILEPATH --template /home/templates/advisory.yaml.jinja \
-          --data '{"advisory":{"spec":$(params.advisory_json)}}'
+            --data '{"advisory":{"spec":'"${advisoryJsonWithKey}"'}}'
 
           git add ${ADVISORY_FILEPATH}
           git commit -m "[RHTAP Release] new advisory for $(params.application)"
