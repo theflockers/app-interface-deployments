@@ -247,7 +247,7 @@ spec:
         fi
 
         # get the manifest digests
-        indexImageCopy=`cat $(results.buildState.path) | jq -cr .internal_index_image_copy`
+        indexImageCopy=`cat $(results.jsonBuildInfo.path) | jq -cr .internal_index_image_copy`
         # Use this to obtain the manifest digests for each arch in manifest list
         indexImageDigestsRaw=$(skopeo inspect --raw docker://$indexImageCopy)
         # according the IIB team,
