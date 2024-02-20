@@ -90,3 +90,5 @@ spec:
       value: $(tasks.t-add-fbc-fragment-to-index-image.results.buildState)
     - name: genericResult
       value: $(tasks.t-add-fbc-fragment-to-index-image.results.genericResult)
+    - name: indexImageDigests
+      value: $(tasks.t-add-fbc-fragment-to-index-image.results.indexImageDigests)
