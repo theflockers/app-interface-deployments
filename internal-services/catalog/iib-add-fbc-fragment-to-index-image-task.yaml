@@ -60,6 +60,8 @@ spec:
       description: IIB Service build state
     - name: genericResult
       description: Set the genericResult if FBC Fragment is Opt-In and should be published
+    - name: indexImageDigests
+      description: The digests for each arch for the manifest list of the index image
   steps:
     - name: s-add-fbc-fragment-to-index-image
       image: >-
@@ -243,6 +245,22 @@ spec:
             echo "Timeout while waiting for the build to finish"
             echo "Build timeout" < $(results.buildState.path)
         fi
+
+        # get the manifest digests
+        indexImageCopy=`cat $(results.jsonBuildInfo.path) | jq -cr .internal_index_image_copy`
+        # Use this to obtain the manifest digests for each arch in manifest list
+        indexImageDigestsRaw=$(skopeo inspect --raw docker://$indexImageCopy)
+        # according the IIB team,
+        #  "all index images will always be multi-arch with a manifest list"
+        #
+        indexImageDigests=$(echo ${indexImageDigestsRaw} | \
+           jq -r '.manifests[]? | select(.mediaType=="application/vnd.docker.distribution.manifest.v2+json") | .digest')
+        echo -n $indexImageDigests > $(results.indexImageDigests.path)
+        if [ -z "${indexImageDigests}" ] ; then
+          echo "Index image produced is not multi-arch with a manifest list"
+          exit 1
+        fi
+
         exit ${SYSEXIT}
   volumes:
     - name: service-account-secret
