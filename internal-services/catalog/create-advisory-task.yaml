@@ -4,7 +4,7 @@ kind: Task
 metadata:
   name: create-advisory-task
   labels:
-    app.kubernetes.io/version: "0.5"
+    app.kubernetes.io/version: "0.6"
   annotations:
     tekton.dev/pipelines.minVersion: "0.12.1"
     tekton.dev/tags: release
@@ -23,6 +23,9 @@ spec:
     - name: application
       type: string
       description: Application being released
+    - name: repo
+      type: string
+      description: Git repo to store the advisory yaml in
     - name: origin
       type: string
       description: |
@@ -36,7 +39,7 @@ spec:
       description: Success if the task succeeds, the error otherwise
   steps:
     - name: create-advisory
-      image: quay.io/redhat-appstudio/release-service-utils:84e35393a088450f337ad3f1e98a5614368c8154
+      image: quay.io/redhat-appstudio/release-service-utils:591e4ed114947fdb5dc48c7fe8646e647f680431
       env:
         - name: GITLAB_HOST
           valueFrom:
@@ -80,7 +83,6 @@ spec:
           trap 'exitfunc $? $LINENO "$BASH_COMMAND"' EXIT
 
           REPO_BRANCH=main
-          REPO=$(jq -r '.repo' <<< '$(params.advisory_json)')
 
           # loading git and gitlab functions
           . /home/utils/gitlab-functions
@@ -89,7 +91,7 @@ spec:
           git_functions_init
 
           # This also cds into the git repo
-          git_clone_and_checkout --repository "$REPO" --revision "$REPO_BRANCH"
+          git_clone_and_checkout --repository $(params.repo) --revision "$REPO_BRANCH"
 
           ADVISORY_DIR="staging/advisories/$(params.origin)/$(date '+%Y')" # group advisories by <origin workspace>/year
           mkdir -p "${ADVISORY_DIR}"
