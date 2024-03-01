@@ -240,28 +240,35 @@ spec:
         # adding timeout here due to the Task timeout not accepting $(params.buildTimeoutSeconds)
         # as parameter.
         timeout $(params.buildTimeoutSeconds) ${TASKRUN}
-        SYSEXIT=$?
-        if [ ${SYSEXIT} -eq 124 ]; then
-            echo "Timeout while waiting for the build to finish"
-            echo "Build timeout" < $(results.buildState.path)
-        fi
+        BUILDEXIT=$?
 
-        # get the manifest digests
-        indexImageCopy=`cat $(results.jsonBuildInfo.path) | jq -cr .internal_index_image_copy`
-        # Use this to obtain the manifest digests for each arch in manifest list
-        indexImageDigestsRaw=$(skopeo inspect --raw docker://$indexImageCopy)
-        # according the IIB team,
-        #  "all index images will always be multi-arch with a manifest list"
-        #
-        indexImageDigests=$(echo ${indexImageDigestsRaw} | \
-           jq -r '.manifests[]? | select(.mediaType=="application/vnd.docker.distribution.manifest.v2+json") | .digest')
-        echo -n $indexImageDigests > $(results.indexImageDigests.path)
-        if [ -z "${indexImageDigests}" ] ; then
-          echo "Index image produced is not multi-arch with a manifest list"
-          exit 1
-        fi
+        # it should continue only if the IIB build status is complete
+        if [ ${BUILDEXIT} -eq 0 ]; then
 
-        exit ${SYSEXIT}
+            # get the manifest digests
+            indexImageCopy=`cat $(results.jsonBuildInfo.path) | jq -cr .internal_index_image_copy`
+            # Use this to obtain the manifest digests for each arch in manifest list
+            indexImageDigestsRaw=$(skopeo inspect --raw docker://$indexImageCopy)
+            # according the IIB team,
+            #  "all index images will always be multi-arch with a manifest list"
+            #
+            indexImageDigests=$(echo ${indexImageDigestsRaw} | \
+               jq -r \
+               '.manifests[]? | select(.mediaType=="application/vnd.docker.distribution.manifest.v2+json") | .digest')
+            echo -n $indexImageDigests > $(results.indexImageDigests.path)
+            if [ -z "${indexImageDigests}" ] ; then
+              echo "Index image produced is not multi-arch with a manifest list"
+              exit 1
+            fi
+        else
+            if [ ${BUILDEXIT} -eq 124 ]; then
+                echo "Timeout while waiting for the build to finish"
+                echo "Build timeout" < $(results.buildState.path)
+                exit $BUILDEXIT
+            else
+              exit $BUILDEXIT
+            fi
+        fi
   volumes:
     - name: service-account-secret
       secret:
