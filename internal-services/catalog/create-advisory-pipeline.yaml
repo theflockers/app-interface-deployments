@@ -4,7 +4,7 @@ kind: Pipeline
 metadata:
   name: create-advisory
   labels:
-    app.kubernetes.io/version: "0.3"
+    app.kubernetes.io/version: "0.4"
   annotations:
     tekton.dev/pipelines.minVersion: "0.12.1"
     tekton.dev/tags: advisory
@@ -49,3 +49,5 @@ spec:
   results:
     - name: result
       value: $(tasks.create-advisory-task.results.result)
+    - name: advisory_url
+      value: $(tasks.create-advisory-task.results.advisory_url)
