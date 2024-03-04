@@ -4,7 +4,7 @@ kind: Pipeline
 metadata:
   name: create-advisory
   labels:
-    app.kubernetes.io/version: "0.1"
+    app.kubernetes.io/version: "0.4"
   annotations:
     tekton.dev/pipelines.minVersion: "0.12.1"
     tekton.dev/tags: advisory
@@ -20,11 +20,17 @@ spec:
     - name: application
       type: string
       description: Application being released
+    - name: repo
+      type: string
+      description: Git repo to store the advisory yaml in
     - name: origin
       type: string
       description: |
           The origin workspace where the release CR comes from.
           This is used to determine the advisory path
+    - name: config_map_name
+      type: string
+      description: The name of the configMap that contains the signing key
   tasks:
     - name: create-advisory-task
       taskRef:
@@ -34,8 +40,14 @@ spec:
           value: $(params.advisory_json)
         - name: application
           value: $(params.application)
+        - name: repo
+          value: $(params.repo)
         - name: origin
           value: $(params.origin)
+        - name: config_map_name
+          value: $(params.config_map_name)
   results:
     - name: result
       value: $(tasks.create-advisory-task.results.result)
+    - name: advisory_url
+      value: $(tasks.create-advisory-task.results.advisory_url)
