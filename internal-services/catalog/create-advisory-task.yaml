@@ -41,7 +41,7 @@ spec:
       description: The advisory url if the task succeeds, empty string otherwise
   steps:
     - name: create-advisory
-      image: quay.io/redhat-appstudio/release-service-utils:8106fea3af80b7978c599dd9fc8cee0a679f3f35
+      image: quay.io/redhat-appstudio/release-service-utils:c3b1024f1612a741b91a4596f6c84507d949902e
       env:
         - name: GITLAB_HOST
           valueFrom:
