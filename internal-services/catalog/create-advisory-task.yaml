@@ -115,7 +115,7 @@ spec:
           sed -i '/\[libdefaults\]/a\    dns_canonicalize_hostname = false' /etc/krb5.conf
           kinit ${SERVICE_ACCOUNT_NAME} -k -t /tmp/keytab
           ID=$(curl --retry 3 --negotiate -u : ${ERRATA_API}/advisory/reserve_live_id -XPOST | jq -r '.live_id')
-          ADVISORY_NUM=$(printf "%06d" $ID)
+          ADVISORY_NUM=$(printf "%04d" $ID)
 
           # Use ISO 8601 format in UTC/Zulu time, e.g. 2024-03-06T17:27:38Z
           SHIP_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
