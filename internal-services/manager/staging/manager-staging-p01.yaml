@@ -59,7 +59,9 @@ spec:
             - --leader-elect
             - --remote-cluster-config-file
             - /mnt/internal-services/remote-client-config/kubeconfig
-          image: quay.io/redhat-appstudio/internal-services:4ff82e790e4fe8d0521c97cb6b2e2d9c21a76f85
+            - --leader-elect-id
+            - "staging-p01"
+          image: quay.io/redhat-appstudio/internal-services:enable-leader-elect-override
           name: manager
           securityContext:
             allowPrivilegeEscalation: false
