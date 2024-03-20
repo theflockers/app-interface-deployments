@@ -4,7 +4,7 @@ kind: Task
 metadata:
   name: create-advisory-task
   labels:
-    app.kubernetes.io/version: "0.7"
+    app.kubernetes.io/version: "0.9"
   annotations:
     tekton.dev/pipelines.minVersion: "0.12.1"
     tekton.dev/tags: release
@@ -41,7 +41,7 @@ spec:
       description: The advisory url if the task succeeds, empty string otherwise
   steps:
     - name: create-advisory
-      image: quay.io/redhat-appstudio/release-service-utils:591e4ed114947fdb5dc48c7fe8646e647f680431
+      image: quay.io/redhat-appstudio/release-service-utils:58bd05f72c5932d51ecaf749a6f4a8bcb06a89f1
       env:
         - name: GITLAB_HOST
           valueFrom:
@@ -66,6 +66,21 @@ spec:
             secretKeyRef:
               name: create-advisory-secret
               key: git_author_email
+        - name: ERRATA_API
+          valueFrom:
+            secretKeyRef:
+              name: errata-service-account
+              key: errata_api
+        - name: SERVICE_ACCOUNT_NAME
+          valueFrom:
+            secretKeyRef:
+              name: errata-service-account
+              key: name
+        - name: SERVICE_ACCOUNT_KEYTAB
+          valueFrom:
+            secretKeyRef:
+              name: errata-service-account
+              key: base64_keytab
       script: |
           #!/usr/bin/env sh
           set -eo pipefail
@@ -97,10 +112,18 @@ spec:
           # This also cds into the git repo
           git_clone_and_checkout --repository $(params.repo) --revision "$REPO_BRANCH"
 
-          # This will be replaced in RHTAPREL-811
-          ADVISORY_NUM=$(((RND=RANDOM<<15|RANDOM)) ; echo ${RND: -6})
+          # write keytab to file
+          echo -n ${SERVICE_ACCOUNT_KEYTAB} | base64 --decode > /tmp/keytab
+          # workaround kinit: Invalid UID in persistent keyring name while getting default ccache
+          export KRB5CCNAME=`mktemp`
+          sed -i '/\[libdefaults\]/a\    dns_canonicalize_hostname = false' /etc/krb5.conf
+          kinit ${SERVICE_ACCOUNT_NAME} -k -t /tmp/keytab
+          ID=$(curl --retry 3 --negotiate -u : ${ERRATA_API}/advisory/reserve_live_id -XPOST | jq -r '.live_id')
+          ADVISORY_NUM=$(printf "%04d" $ID)
 
-          YEAR=$(date '+%Y')
+          # Use ISO 8601 format in UTC/Zulu time, e.g. 2024-03-06T17:27:38Z
+          SHIP_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          YEAR=${SHIP_DATE%%-*} # derive the year from the ship date
           # group advisories by <origin workspace>/year
           ADVISORY_DIR="data/advisories/$(params.origin)/${YEAR}/${ADVISORY_NUM}"
           mkdir -p "${ADVISORY_DIR}"
@@ -112,9 +135,14 @@ spec:
           advisoryJsonWithKey=$(jq -c --arg key "$signingKey" \
             '.content.images[] += {"signingKey": $key}' <<< '$(params.advisory_json)')
 
+          # Prepare variables for the advisory template
+          DATA=$(jq -c '{"advisory":{"spec":.}}' <<< $advisoryJsonWithKey)
+          DATA=$(jq -c --arg advisory_name "$ADVISORY_NAME" --arg advisory_ship_date "$SHIP_DATE" \
+            '$ARGS.named + .' <<< $DATA)
+
           # Create advisory file
-          /home/utils/apply_template.py -o $ADVISORY_FILEPATH --template /home/templates/advisory.yaml.jinja \
-            --data '{"advisory_name":"'${ADVISORY_NAME}'","advisory":{"spec":'"${advisoryJsonWithKey}"'}}'
+          /home/utils/apply_template.py -o $ADVISORY_FILEPATH --data "$DATA" \
+            --template /home/templates/advisory.yaml.jinja
 
           git add ${ADVISORY_FILEPATH}
           git commit -m "[Konflux Release] new advisory for $(params.application)"
