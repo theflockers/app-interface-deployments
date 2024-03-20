@@ -41,7 +41,7 @@ spec:
       description: The advisory url if the task succeeds, empty string otherwise
   steps:
     - name: create-advisory
-      image: quay.io/redhat-appstudio/release-service-utils:c3b1024f1612a741b91a4596f6c84507d949902e
+      image: quay.io/redhat-appstudio/release-service-utils:58bd05f72c5932d51ecaf749a6f4a8bcb06a89f1
       env:
         - name: GITLAB_HOST
           valueFrom:
@@ -66,15 +66,20 @@ spec:
             secretKeyRef:
               name: create-advisory-secret
               key: git_author_email
+        - name: ERRATA_API
+          valueFrom:
+            secretKeyRef:
+              name: errata-service-account
+              key: errata_api
         - name: SERVICE_ACCOUNT_NAME
           valueFrom:
             secretKeyRef:
-              name: service-account
+              name: errata-service-account
               key: name
         - name: SERVICE_ACCOUNT_KEYTAB
           valueFrom:
             secretKeyRef:
-              name: service-account
+              name: errata-service-account
               key: base64_keytab
       script: |
           #!/usr/bin/env sh
@@ -97,7 +102,6 @@ spec:
 
           REPO_BRANCH=main
           ADVISORY_URL=""
-          ERRATA_API=https://errata.stage.engineering.redhat.com/api/v1
 
           # loading git and gitlab functions
           . /home/utils/gitlab-functions
