@@ -83,7 +83,7 @@ spec:
               key: base64_keytab
       script: |
           #!/usr/bin/env sh
-          set -eo pipefail
+          set -eox pipefail
 
           exitfunc() {
               local err=$1
@@ -121,6 +121,11 @@ spec:
           ID=$(curl --retry 3 --negotiate -u : ${ERRATA_API}/advisory/reserve_live_id -XPOST | jq -r '.live_id')
           ADVISORY_NUM=$(printf "%04d" $ID)
 
+          # Inject signing key into advisory_json
+          signingKey=$(kubectl get configmap $(params.config_map_name) -o jsonpath="{.data.SIG_KEY_NAME}")
+          advisoryJsonWithKey=$(jq -c --arg key "$signingKey" \
+            '.content.images[] += {"signingKey": $key}' <<< '$(params.advisory_json)')
+
           # Use ISO 8601 format in UTC/Zulu time, e.g. 2024-03-06T17:27:38Z
           SHIP_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           YEAR=${SHIP_DATE%%-*} # derive the year from the ship date
@@ -129,11 +134,6 @@ spec:
           mkdir -p "${ADVISORY_DIR}"
           ADVISORY_FILEPATH="${ADVISORY_DIR}/advisory.yaml"
           ADVISORY_NAME="${YEAR}:${ADVISORY_NUM}"
-
-          # Inject signing key into advisory_json
-          signingKey=$(kubectl get configmap $(params.config_map_name) -o jsonpath="{.data.SIG_KEY_NAME}")
-          advisoryJsonWithKey=$(jq -c --arg key "$signingKey" \
-            '.content.images[] += {"signingKey": $key}' <<< '$(params.advisory_json)')
 
           # Prepare variables for the advisory template
           DATA=$(jq -c '{"advisory":{"spec":.}}' <<< $advisoryJsonWithKey)
