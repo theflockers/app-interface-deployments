@@ -104,6 +104,7 @@ spec:
 
           REPO_BRANCH=main
           ADVISORY_URL=""
+          cd /tmp # Workaround fatal: could not create work tree dir Permission denied
 
           # loading git and gitlab functions
           . /home/utils/gitlab-functions
