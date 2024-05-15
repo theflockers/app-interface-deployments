@@ -124,7 +124,9 @@ spec:
           echo -n ${SERVICE_ACCOUNT_KEYTAB} | base64 --decode > /tmp/keytab
           # workaround kinit: Invalid UID in persistent keyring name while getting default ccache
           export KRB5CCNAME=`mktemp`
-          sed -i '/\[libdefaults\]/a\    dns_canonicalize_hostname = false' /etc/krb5.conf
+          # see https://stackoverflow.com/a/12308187
+          export KRB5_CONFIG=`mktemp`
+          sed '/\[libdefaults\]/a\    dns_canonicalize_hostname = false' /etc/krb5.conf > "${KRB5_CONFIG}"
           kinit ${SERVICE_ACCOUNT_NAME} -k -t /tmp/keytab
           ID=$(curl --retry 3 --negotiate -u : ${ERRATA_API}/advisory/reserve_live_id -XPOST | jq -r '.live_id')
           ADVISORY_NUM=$(printf "%04d" $ID)
