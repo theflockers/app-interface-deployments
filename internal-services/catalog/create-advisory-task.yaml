@@ -23,9 +23,6 @@ spec:
     - name: application
       type: string
       description: Application being released
-    - name: repo
-      type: string
-      description: Git repo to store the advisory yaml in
     - name: origin
       type: string
       description: |
@@ -66,6 +63,11 @@ spec:
             secretKeyRef:
               name: create-advisory-secret
               key: git_author_email
+        - name: GIT_REPO
+          valueFrom:
+            secretKeyRef:
+              name: create-advisory-secret
+              key: git_repo
         - name: ERRATA_API
           valueFrom:
             secretKeyRef:
@@ -113,7 +115,7 @@ spec:
           git_functions_init
 
           # This also cds into the git repo
-          git_clone_and_checkout --repository $(params.repo) --revision "$REPO_BRANCH"
+          git_clone_and_checkout --repository "$GIT_REPO" --revision "$REPO_BRANCH"
 
           # Inject signing key into ADVISORY_JSON
           signingKey=$(kubectl get configmap $(params.config_map_name) -o jsonpath="{.data.SIG_KEY_NAME}")
@@ -155,4 +157,4 @@ spec:
           git_push_with_retries --branch $REPO_BRANCH --retries 5 --url origin
           # Construct the advisory url to report back to the user as a result
           # Note: This currently only supports gitlab repos, which is all we expect for now
-          ADVISORY_URL="$(echo $(params.repo) | sed 's/\.git//')/-/blob/${REPO_BRANCH}/${ADVISORY_FILEPATH}"
+          ADVISORY_URL="$(echo ${GIT_REPO}) | sed 's/\.git//')/-/blob/${REPO_BRANCH}/${ADVISORY_FILEPATH}"

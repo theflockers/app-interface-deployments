@@ -20,9 +20,6 @@ spec:
     - name: application
       type: string
       description: Application being released
-    - name: repo
-      type: string
-      description: Git repo to store the advisory yaml in
     - name: origin
       type: string
       description: |
@@ -40,8 +37,6 @@ spec:
           value: $(params.advisory_json)
         - name: application
           value: $(params.application)
-        - name: repo
-          value: $(params.repo)
         - name: origin
           value: $(params.origin)
         - name: config_map_name
