@@ -157,4 +157,4 @@ spec:
           git_push_with_retries --branch $REPO_BRANCH --retries 5 --url origin
           # Construct the advisory url to report back to the user as a result
           # Note: This currently only supports gitlab repos, which is all we expect for now
-          ADVISORY_URL="$(echo ${GIT_REPO}) | sed 's/\.git//')/-/blob/${REPO_BRANCH}/${ADVISORY_FILEPATH}"
+          ADVISORY_URL="$(echo ${GIT_REPO} | sed 's/\.git//')/-/blob/${REPO_BRANCH}/${ADVISORY_FILEPATH}"
