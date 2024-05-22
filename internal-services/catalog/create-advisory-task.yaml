@@ -31,6 +31,9 @@ spec:
     - name: config_map_name
       type: string
       description: The name of the configMap that contains the signing key
+    - name: advisory_secret_name
+      type: string
+      description: The name of the secret that contains the advisory creation metadata
   results:
     - name: result
       description: Success if the task succeeds, the error otherwise
@@ -43,7 +46,7 @@ spec:
         - name: GITLAB_HOST
           valueFrom:
             secretKeyRef:
-              name: create-advisory-secret
+              name: $(params.advisory_secret_name)
               key: gitlab_host
         # This is a GitLab Project access token. Go to the settings/access_tokens page
         # of your repository to create one. It should have the Developer role with read
@@ -51,22 +54,22 @@ spec:
         - name: ACCESS_TOKEN
           valueFrom:
             secretKeyRef:
-              name: create-advisory-secret
+              name: $(params.advisory_secret_name)
               key: gitlab_access_token
         - name: GIT_AUTHOR_NAME
           valueFrom:
             secretKeyRef:
-              name: create-advisory-secret
+              name: $(params.advisory_secret_name)
               key: git_author_name
         - name: GIT_AUTHOR_EMAIL
           valueFrom:
             secretKeyRef:
-              name: create-advisory-secret
+              name: $(params.advisory_secret_name)
               key: git_author_email
         - name: GIT_REPO
           valueFrom:
             secretKeyRef:
-              name: create-advisory-secret
+              name: $(params.advisory_secret_name)
               key: git_repo
         - name: ERRATA_API
           valueFrom:
