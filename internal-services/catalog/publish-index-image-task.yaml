@@ -53,7 +53,7 @@ spec:
         export PATH
 
         # do not authenticate if the source is redhat's "registry-proxy" which is unauthenticated.
-        if [[ "$(params.sourceIndex)" =~ ^registry-proxy(\/stage)?.engineering.redhat.com ]]; then
+        if [[ ! "$(params.sourceIndex)" =~ ^registry-proxy(\-stage)?.engineering.redhat.com ]]; then
             AUTH_PARAM="--src-creds ${SOURCE_INDEX_CREDENTIAL}"
         fi
 
