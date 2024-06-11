@@ -110,8 +110,9 @@ spec:
         # performs kerberos authentication.
         base64 -d /mnt/service-account-secret/keytab > /tmp/keytab
 
-        echo "${KRB5_CONF_CONTENT}" > /tmp/krb5.conf
-        export KRB5_CONFIG=/tmp/krb5.conf
+        KRB5_TEMP_CONF=$(mktemp)
+        echo "${KRB5_CONF_CONTENT}" > "${KRB5_TEMP_CONF}"
+        export KRB5_CONFIG="${KRB5_TEMP_CONF}"
 
         /usr/bin/kinit -V $(cat /mnt/service-account-secret/principal) -k -t /tmp/keytab
 
