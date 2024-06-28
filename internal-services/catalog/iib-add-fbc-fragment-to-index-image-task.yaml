@@ -116,6 +116,7 @@ spec:
 
         /usr/bin/kinit -V $(cat /mnt/service-account-secret/principal) -k -t /tmp/keytab
 
+        set -x
         # check if this fbc fragment is opt-in
         echo "Fetching the image bundle from $(params.fbcFragment)..."
         PULL_SPEC_LIST=$(opm render $(params.fbcFragment) | jq -r \
