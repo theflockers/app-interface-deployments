@@ -152,7 +152,10 @@ spec:
                 FILE=$(jq -c --arg i "$i" '.staged.files[$i|tonumber]' <<< "$COMPONENT")
                 SOURCE=$(jq -er '.source' <<< "$FILE")
                 FILENAME=$(jq -er '.filename' <<< "$FILE")
-                gzip -d "${SOURCE}.gz" || echo "didn't find mapped file: ${SOURCE}.gz"
+                # The .qcow2 images are not zipped
+                if [ -f "${SOURCE}.gz" ] ; then
+                    gzip -d "${SOURCE}.gz"
+                fi
                 DESTINATION_FILE="${DESTINATION}/${FILENAME}"
                 # Albeit a rare one, this is a race condition since this is run in parallel.
                 # The race condition is if two files have the same $DESTINATION_FILE and both
@@ -162,7 +165,7 @@ spec:
                     echo " and filename value: $FILENAME. Failing..." >&2
                     exit 1
                 fi
-                mv "$SOURCE" "${DESTINATION_FILE}"
+                mv "$SOURCE" "${DESTINATION_FILE}" || echo "didn't find mapped file: ${SOURCE}"
             done
         }
 
