@@ -65,7 +65,7 @@ spec:
   steps:
     - name: s-add-fbc-fragment-to-index-image
       image: >-
-        quay.io/konflux-ci/release-service-utils:38c3bfd7479c86b832cba5b61f9bbde40c469393
+        quay.io/konflux-ci/release-service-utils:e633d51cd41d73e4b3310face21bb980af7a662f
       env:
         - name: IIB_SERVICE_URL
           valueFrom:
@@ -201,7 +201,7 @@ spec:
           mountPath: /mnt/service-account-secret
     - name: s-wait-for-build-state
       image: >-
-        quay.io/konflux-ci/release-service-utils:38c3bfd7479c86b832cba5b61f9bbde40c469393
+        quay.io/konflux-ci/release-service-utils:e633d51cd41d73e4b3310face21bb980af7a662f
       env:
         - name: IIB_SERVICE_URL
           valueFrom:
