@@ -126,7 +126,7 @@ spec:
         export EXODUS_GW_URL="$EXODUS_URL"
         export EXODUS_PULP_HOOK_ENABLED=True
         export EXODUS_GW_TIMEOUT=7200
-        mkdir ~/.docker
+        mkdir -p ~/.docker
 
         set +x
         echo "$EXODUS_CERT" > "$EXODUS_GW_CERT"
