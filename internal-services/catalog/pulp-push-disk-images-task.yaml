@@ -266,7 +266,7 @@ spec:
         productName = "$(params.productName)"
         productCode = "$(params.productCode)"
         productVersionName = "$(params.productVersionName)"
-        components = json.loads("$(params.components_json)")
+        components = json.loads("$(params.component_json)")
 
         CONTENT_DIR= os.environ.get('DISK_IMAGE_DIR')
         content_list = os.listdir(CONTENT_DIR)
