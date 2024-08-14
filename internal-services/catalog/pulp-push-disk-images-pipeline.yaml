@@ -4,7 +4,7 @@ kind: Pipeline
 metadata:
   name: push-disk-images
   labels:
-    app.kubernetes.io/version: "0.1"
+    app.kubernetes.io/version: "0.2"
   annotations:
     tekton.dev/pipelines.minVersion: "0.12.1"
 spec:
@@ -26,6 +26,25 @@ spec:
     - name: udcacheSecret
       type: string
       description: Env specific secret containing the rhsm-pulp credentials
+    - name: cgwHostname
+      type: string
+      description: The hostname of the content-gateway to publish the metadata to
+      default: https://developers.redhat.com/content-gateway/rest/admin
+    - name: cgwSecret
+      type: string
+      description: Env specific secret containing the content gateway credentials
+    - name: productName
+      type: string
+      description: product name
+    - name: productCode
+      type: string
+      description: product code
+    - name: productVersionName
+      type: string
+      description: product version name
+    - name: component_json
+      type: string
+      description: String containing a JSON representation of the components listed in the data.mapping in RPA
   tasks:
     - name: pulp-push-disk-images
       timeout: "2h00m0s"
@@ -42,6 +61,18 @@ spec:
           value: $(params.pulpSecret)
         - name: udcacheSecret
           value: $(params.udcacheSecret)
+        - name: cgwHostname
+          value: $(params.cgwHostname)
+        - name: cgwSecret
+          value: $(params.cgwSecret)
+        - name: productName
+          value: $(params.productName)
+        - name: productCode
+          value: $(params.productCode)
+        - name: productVersionName
+          value: $(params.productVersionName)
+        - name: component_json
+          value: $(params.component_json)
   results:
     - name: result
       value: $(tasks.pulp-push-disk-images.results.result)

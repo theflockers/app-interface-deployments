@@ -4,7 +4,7 @@ kind: Task
 metadata:
   name: pulp-push-disk-images
   labels:
-    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/version: "0.2.0"
   annotations:
     tekton.dev/pipelines.minVersion: "0.12.1"
     tekton.dev/tags: release
@@ -31,6 +31,24 @@ spec:
     - name: udcacheSecret
       type: string
       description: Env specific secret containing the udcache credentials
+    - name: cgwHostname
+      type: string
+      description: Env specific hostname for content gateway
+    - name: cgwSecret
+      type: string
+      description: Env specific secret containing the content gateway credentials
+    - name: productName
+      type: string
+      description: product name
+    - name: productCode
+      type: string
+      description: product code
+    - name: productVersionName
+      type: string
+      description: product version name
+    - name: component_json
+      type: string
+      description: String containing a JSON representation of the components listed in the data.mapping in RPA
   results:
     - name: result
       description: Success if the task succeeds, the error otherwise
@@ -90,6 +108,16 @@ spec:
               key: .dockerconfigjson
         - name: "SNAPSHOT_JSON"
           value: "$(params.snapshot_json)"
+        - name: CGW_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: $(params.cgwSecret)
+              key: username
+        - name: CGW_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: $(params.cgwSecret)
+              key: token
       script: |
         #!/usr/bin/env bash
         set -ex
@@ -139,7 +167,7 @@ spec:
         echo "$DOCKER_CONFIG_JSON" | sed -r 's/(^|\})[^{}]+(\{|$)/\1\2/g' > ~/.docker/config.json
         set -x
 
-        DISK_IMAGE_DIR="$(mktemp -d)"
+        export DISK_IMAGE_DIR="$(mktemp -d)"
 
         process_component() { # Expected argument is [component json]
             COMPONENT=$1
@@ -211,3 +239,121 @@ spec:
         pulp_push_wrapper --debug --source "${DISK_IMAGE_DIR}" --pulp-url "$PULP_URL" \
           --pulp-cert $PULP_CERT_FILE --pulp-key $PULP_KEY_FILE --udcache-url "$UDC_URL" \
           2> "$STDERR_FILE"
+
+        echo "Publishing to Developer Portal..."
+
+        python3 <<EOF
+        """
+        Run push-cgw-metadata command to push metadata to CGW:
+        1. Extract all components under contentGateway key from dataPath
+        2. Find all the files in contentDir that starts with the component name
+        4. Generate necessary metadata for each file
+        5. Dump the metadata to a YAML file
+        6. Run push-cgw-metadata to push the metadata
+        """
+        import os
+        import json
+        import yaml
+        import hashlib
+        import subprocess
+
+        WORKSPACE_DIR = os.path.dirname("/tmp")
+        METADATA_FILE_PATH = f"{WORKSPACE_DIR}/cgw_metadata.yaml"
+        RESULT_FILE_JSON_PATH=f"{WORKSPACE_DIR}/results.json"
+
+        os.makedirs(WORKSPACE_DIR, exist_ok=True)
+
+        productName = "$(params.productName)"
+        productCode = "$(params.productCode)"
+        productVersionName = "$(params.productVersionName)"
+        components = json.loads("$(params.components_json)")
+
+        CONTENT_DIR= os.environ.get('DISK_IMAGE_DIR')
+        content_list = os.listdir(CONTENT_DIR)
+
+        # Default values for each component,
+        # values from DATA_FILE takes presedence over these
+        default_values_per_component = {
+            'type': "FILE",
+            'shortURL': f"/cgw/{productCode}",
+            "hidden": False,
+            "invisible": False
+        }
+
+        def generate_download_url(file_name):
+            """
+            Generate a download URL in this format:
+            /content/origin/files/sha256/{checksum[:2]}{checksum}/{file_name}
+            """
+            prefix = "/content/origin/files/sha256"
+            sha256_hash = hashlib.sha256()
+            with open(CONTENT_DIR + "/" + file_name, "rb") as f:
+                for byte_block in iter(lambda: f.read(4096), b""):
+                    sha256_hash.update(byte_block)
+            checksum = sha256_hash.hexdigest()
+            return f"{prefix}/{checksum[:2]}/{checksum}/{file_name}"
+
+        def generate_metadata(content_list, components):
+            """
+            Generate metadata for each file in
+            content_list that starts with the component name
+            """
+            metadata = []
+            for file in content_list:
+                matching_component = [
+                    data
+                    for data in components
+                    if file.startswith(data['name'])]
+
+                if matching_component:
+                    print("Processing file: ", file)
+                    for data in matching_component:
+                        component = data.copy()
+                        component.update({
+                            'productName': productName,
+                            'productCode': productCode,
+                            'productVersionName': productVersionName,
+                            'downloadURL': generate_download_url(file),
+                            'label': file,
+                        })
+                        del component['name']
+                        default_values_per_component['shortURL'] += f"/{file}"
+                        metadata.append({
+                            'type': 'file',
+                            'action': 'create',
+                            'metadata': {**default_values_per_component, **component}
+                        })
+                else:
+                    print(f"Skipping file: {file} as it does not start with any component name")
+
+            return metadata
+
+        metadata = generate_metadata(content_list, components)
+        print(len(metadata), "Files will be published to CGW")
+
+        with open(METADATA_FILE_PATH, 'w') as file:
+            yaml.dump(metadata, file, default_flow_style=False, sort_keys=False)
+
+        print(f"YAML content dumped to {METADATA_FILE_PATH}")
+        command = [
+            'push-cgw-metadata',
+            '--CGW_hostname', '$(params.cgwHostname)',
+            '--CGW_username', '${CGW_USERNAME}',
+            '--CGW_password', '${CGW_TOKEN}',
+            '--CGW_filepath', METADATA_FILE_PATH
+        ]
+
+        try:
+            result = subprocess.run(command, capture_output=True, text=True)
+            command_output = result.stderr # using stderr to capture logged output
+            print(f"Command succeeded with {command_output}")
+        except subprocess.CalledProcessError as error:
+            print(f"Command failed with return code {error.returncode}")
+            command_output = error.stderr
+
+        result_data = {"no_of_files_processed": len(metadata),
+                      "metadata_file_path": METADATA_FILE_PATH,
+                      "command_output": command_output}
+
+        print(f"results: {results_data}")
+        EOF
