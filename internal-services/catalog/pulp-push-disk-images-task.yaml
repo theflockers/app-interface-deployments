@@ -208,7 +208,7 @@ spec:
           developer-portal-wrapper --debug --product-name "${productName}" \
             --product-code "${productCode}" \
             --product-version-name "${productVersionName}" \
-            --cgw-hostname "$(param.cgwHostname)" \
+            --cgw-hostname "$(params.cgwHostname)" \
             --content-directory "$2" \
             --file-prefix "${filePrefix}"
 
