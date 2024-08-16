@@ -205,7 +205,7 @@ spec:
           productVersionName=$(jq -er '.contentGateway.productVersionName' <<< "${COMPONENT}")
           filePrefix=$(jq -er '.contentGateway.filePrefix' <<< "${COMPONENT}")
 
-          developer-portal-wrapper --debug --product-name "${productName}" \
+          developer_portal_wrapper --debug --product-name "${productName}" \
             --product-code "${productCode}" \
             --product-version-name "${productVersionName}" \
             --cgw-hostname "$(params.cgwHostname)" \
