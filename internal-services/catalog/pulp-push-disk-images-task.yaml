@@ -42,7 +42,7 @@ spec:
       description: Success if the task succeeds, the error otherwise
   steps:
     - name: pull-and-push-images
-      image: quay.io/konflux-ci/release-service-utils:65d8db844c008e7736ec8dff307868525279484d
+      image: quay.io/konflux-ci/release-service-utils:2ecf04f67fd48ef50946d40b7840b77ccbdf6305
       env:
         - name: EXODUS_CERT
           valueFrom:
@@ -207,7 +207,7 @@ spec:
             --product-version-name "${productVersionName}" \
             --cgw-hostname "$(params.cgwHostname)" \
             --content-directory "$2" \
-            --file-prefix "${filePrefix}"
+            --file-prefix "${filePrefix}" 2> "$STDERR_FILE"
 
         }
 
@@ -260,5 +260,5 @@ spec:
         NUM_COMPONENTS=$(jq '.components | length' <<< "$SNAPSHOT_JSON")
         for ((i = 0; i < NUM_COMPONENTS; i++)) ; do
             COMPONENT=$(jq -c --arg i "$i" '.components[$i|tonumber]' <<< "$SNAPSHOT_JSON")
-            process_component_for_developer_portal "$COMPONENT" "${component_destinations[$i]}" 2> "$STDERR_FILE"
+            process_component_for_developer_portal "$COMPONENT" "${component_destinations[$i]}"
         done
