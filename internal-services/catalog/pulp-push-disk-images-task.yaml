@@ -197,10 +197,18 @@ spec:
         process_component_for_developer_portal() { # Expected argument are [component json], [content_directory]
           COMPONENT=$1
 
-          productName=$(jq -er '.contentGateway.productName' <<< "${COMPONENT}")
-          productCode=$(jq -er '.contentGateway.productCode' <<< "${COMPONENT}")
-          productVersionName=$(jq -er '.contentGateway.productVersionName' <<< "${COMPONENT}")
-          filePrefix=$(jq -er '.contentGateway.filePrefix' <<< "${COMPONENT}")
+          productName=$(jq -er '.contentGateway.productName' <<< "${COMPONENT}") \
+            || (echo Missing contentGateway.productName value for component. This should be an existing product in the \
+                Developer Portal. Failing && exit 1)
+          productCode=$(jq -er '.contentGateway.productCode' <<< "${COMPONENT}") \
+            || (echo Missing contentGateway.productCode value for component. This should be an existing product in the \
+                Developer Portal. Failing && exit 1)
+          productVersionName=$(jq -er '.contentGateway.productVersionName' <<< "${COMPONENT}") \
+            || (echo Missing contentGateway.productVersionName value for component. This should be an existing product \
+                in the Developer Portal. Failing && exit 1)
+          filePrefix=$(jq -er '.contentGateway.filePrefix' <<< "${COMPONENT}") \
+            || (echo Missing contentGateway.filePrefix value for component. This should be the prefix for files to \
+                upload to the Developer Portal. Failing && exit 1)
 
           developer_portal_wrapper --debug --product-name "${productName}" \
             --product-code "${productCode}" \
