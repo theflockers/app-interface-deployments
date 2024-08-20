@@ -4,7 +4,7 @@ kind: Task
 metadata:
   name: pulp-push-disk-images
   labels:
-    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/version: "0.2.0"
   annotations:
     tekton.dev/pipelines.minVersion: "0.12.1"
     tekton.dev/tags: release
@@ -31,12 +31,18 @@ spec:
     - name: udcacheSecret
       type: string
       description: Env specific secret containing the udcache credentials
+    - name: cgwHostname
+      type: string
+      description: Env specific hostname for content gateway
+    - name: cgwSecret
+      type: string
+      description: Env specific secret containing the content gateway credentials
   results:
     - name: result
       description: Success if the task succeeds, the error otherwise
   steps:
     - name: pull-and-push-images
-      image: quay.io/konflux-ci/release-service-utils:cff1fd1e9d8fabc256ff17f6731b2c037a0a1102
+      image: quay.io/konflux-ci/release-service-utils:2ecf04f67fd48ef50946d40b7840b77ccbdf6305
       env:
         - name: EXODUS_CERT
           valueFrom:
@@ -90,6 +96,16 @@ spec:
               key: .dockerconfigjson
         - name: "SNAPSHOT_JSON"
           value: "$(params.snapshot_json)"
+        - name: CGW_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: $(params.cgwSecret)
+              key: username
+        - name: CGW_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: $(params.cgwSecret)
+              key: token
       script: |
         #!/usr/bin/env bash
         set -ex
@@ -139,14 +155,14 @@ spec:
         echo "$DOCKER_CONFIG_JSON" | sed -r 's/(^|\})[^{}]+(\{|$)/\1\2/g' > ~/.docker/config.json
         set -x
 
-        DISK_IMAGE_DIR="$(mktemp -d)"
+        export DISK_IMAGE_DIR="$(mktemp -d)"
 
         process_component() { # Expected argument is [component json]
             COMPONENT=$1
             PULLSPEC=$(jq -er '.containerImage' <<< "${COMPONENT}")
             DESTINATION="${DISK_IMAGE_DIR}/$(jq -er '.staged.destination' <<< "${COMPONENT}")/FILES" \
-              || (echo Missing staged.destination value for component. This should be an existing pulp repo. Failing \
-              && exit 1)
+              || (echo "Missing staged.destination value for component. This should be an existing pulp repo. \
+                  Failing" && exit 1)
             mkdir -p "${DESTINATION}"
             DOWNLOAD_DIR=$(mktemp -d)
             cd "$DOWNLOAD_DIR"
@@ -175,10 +191,40 @@ spec:
                 fi
                 mv "$SOURCE" "${DESTINATION_FILE}" || echo "didn't find mapped file: ${SOURCE}"
             done
+
+        }
+
+        process_component_for_developer_portal() { # Expected argument are [component json], [content_directory]
+          COMPONENT=$1
+
+          productName="$(jq -er '.contentGateway.productName' <<< "${COMPONENT}")" \
+            || (echo "Missing contentGateway.productName value for component. This should be an existing product \
+                  in the Developer Portal. Failing" && exit 1)
+
+          productCode="$(jq -er '.contentGateway.productCode' <<< "${COMPONENT}")" \
+            || (echo "Missing contentGateway.productCode value for component. This should be an existing product \
+                  in the Developer Portal. Failing" && exit 1)
+
+          productVersionName="$(jq -er '.contentGateway.productVersionName' <<< "${COMPONENT}")" \
+            || (echo "Missing contentGateway.productVersionName value for component. This should be an existing \
+                  product in the Developer Portal. Failing" && exit 1)
+
+          filePrefix="$(jq -er '.contentGateway.filePrefix' <<< "${COMPONENT}")" \
+            || (echo "Missing contentGateway.filePrefix value for component. This should be the prefix for files to \
+                  upload to the Developer Portal. Failing" && exit 1)
+
+          developer_portal_wrapper --debug --product-name "${productName}" \
+            --product-code "${productCode}" \
+            --product-version-name "${productVersionName}" \
+            --cgw-hostname "$(params.cgwHostname)" \
+            --content-directory "$2" \
+            --file-prefix "${filePrefix}"
+
         }
 
         RUNNING_JOBS="\j" # Bash parameter for number of jobs currently running
         NUM_COMPONENTS=$(jq '.components | length' <<< "$SNAPSHOT_JSON")
+
         # Process each component in parallel
         for ((i = 0; i < NUM_COMPONENTS; i++)) ; do
             COMPONENT=$(jq -c --arg i "$i" '.components[$i|tonumber]' <<< "$SNAPSHOT_JSON")
@@ -211,3 +257,19 @@ spec:
         pulp_push_wrapper --debug --source "${DISK_IMAGE_DIR}" --pulp-url "$PULP_URL" \
           --pulp-cert $PULP_CERT_FILE --pulp-key $PULP_KEY_FILE --udcache-url "$UDC_URL" \
           2> "$STDERR_FILE"
+
+        relative_paths=$(echo "$STAGED_JSON" | jq -erc .payload.files[].relative_path)
+        component_destinations=()
+        for path in $relative_paths:
+        do
+          parent_dir=$(dirname "$path")
+          component_destinations+=("${DISK_IMAGE_DIR}/$parent_dir")
+        done
+
+        ## Process Files for Developer Portal / CGW
+        ##
+        NUM_COMPONENTS=$(jq '.components | length' <<< "$SNAPSHOT_JSON")
+        for ((i = 0; i < NUM_COMPONENTS; i++)) ; do
+            COMPONENT=$(jq -c --arg i "$i" '.components[$i|tonumber]' <<< "$SNAPSHOT_JSON")
+            process_component_for_developer_portal "$COMPONENT" "${component_destinations[$i]}"  2> "$STDERR_FILE"
+        done
