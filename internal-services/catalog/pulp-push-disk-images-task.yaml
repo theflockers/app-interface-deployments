@@ -161,8 +161,8 @@ spec:
             COMPONENT=$1
             PULLSPEC=$(jq -er '.containerImage' <<< "${COMPONENT}")
             DESTINATION="${DISK_IMAGE_DIR}/$(jq -er '.staged.destination' <<< "${COMPONENT}")/FILES" \
-              || (echo Missing staged.destination value for component. This should be an existing pulp repo. Failing \
-              && exit 1)
+              || (echo "Missing staged.destination value for component. This should be an existing pulp repo. \
+                  Failing" && exit 1)
             mkdir -p "${DESTINATION}"
             DOWNLOAD_DIR=$(mktemp -d)
             cd "$DOWNLOAD_DIR"
@@ -197,37 +197,28 @@ spec:
         process_component_for_developer_portal() { # Expected argument are [component json], [content_directory]
           COMPONENT=$1
 
-          productName=$(jq -r '.contentGateway.productName // ""' <<< "${COMPONENT}")
-          if [ "${productName}" == "" ]; then
-            echo "Missing contentGateway.productName value for component. This should be an existing product in the \
-                  Developer Portal. Failing" | tee -a "$STDERR_FILE"
-            exit 1
-          fi
-          productCode=$(jq -r '.contentGateway.productCode // ""' <<< "${COMPONENT}")
-          if [ "${productCode}" == "" ]; then
-            echo "Missing contentGateway.productCode value for component. This should be an existing product in the \
-                  Developer Portal. Failing" | tee -a "$STDERR_FILE"
-            exit 1
-          fi
-          productVersionName=$(jq -r '.contentGateway.productVersionName // ""' <<< "${COMPONENT}")
-          if [ "${productVersionName}" == "" ]; then
-            echo "Missing contentGateway.productVersionName value for component. This should be an existing product \
-                  in the Developer Portal. Failing" | tee -a "$STDERR_FILE"
-            exit 1
-          fi
-          filePrefix=$(jq -r '.contentGateway.filePrefix // ""' <<< "${COMPONENT}")
-          if [ "${filePrefix}" == "" ]; then
-            echo "Missing contentGateway.filePrefix value for component. This should be the prefix for files to \
-                  upload to the Developer Portal. Failing" | tee -a "$STDERR_FILE"
-            exit 1
-          fi
+          productName="$(jq -er '.contentGateway.productName' <<< "${COMPONENT}")" \
+            || (echo "Missing contentGateway.productName value for component. This should be an existing product \
+                  in the Developer Portal. Failing" && exit 1)
+
+          productCode="$(jq -er '.contentGateway.productCode' <<< "${COMPONENT}")" \
+            || (echo "Missing contentGateway.productCode value for component. This should be an existing product \
+                  in the Developer Portal. Failing" && exit 1)
+
+          productVersionName="$(jq -er '.contentGateway.productVersionName' <<< "${COMPONENT}")" \
+            || (echo "Missing contentGateway.productVersionName value for component. This should be an existing \
+                  product in the Developer Portal. Failing" && exit 1)
+
+          filePrefix="$(jq -er '.contentGateway.filePrefix' <<< "${COMPONENT}")" \
+            || (echo "Missing contentGateway.filePrefix value for component. This should be the prefix for files to \
+                  upload to the Developer Portal. Failing" && exit 1)
 
           developer_portal_wrapper --debug --product-name "${productName}" \
             --product-code "${productCode}" \
             --product-version-name "${productVersionName}" \
             --cgw-hostname "$(params.cgwHostname)" \
             --content-directory "$2" \
-            --file-prefix "${filePrefix}" 2> "$STDERR_FILE"
+            --file-prefix "${filePrefix}"
 
         }
 
@@ -280,5 +271,5 @@ spec:
         NUM_COMPONENTS=$(jq '.components | length' <<< "$SNAPSHOT_JSON")
         for ((i = 0; i < NUM_COMPONENTS; i++)) ; do
             COMPONENT=$(jq -c --arg i "$i" '.components[$i|tonumber]' <<< "$SNAPSHOT_JSON")
-            process_component_for_developer_portal "$COMPONENT" "${component_destinations[$i]}"
+            process_component_for_developer_portal "$COMPONENT" "${component_destinations[$i]}"  2> "$STDERR_FILE"
         done
