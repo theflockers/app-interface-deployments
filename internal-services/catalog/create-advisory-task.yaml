@@ -110,6 +110,9 @@ spec:
           REPO_BRANCH=main
           ADVISORY_URL=""
 
+          # Switch to /tmp to avoid filesystem permission issues
+          cd /tmp
+
           # loading git and gitlab functions
           . /home/utils/gitlab-functions
           . /home/utils/git-functions
