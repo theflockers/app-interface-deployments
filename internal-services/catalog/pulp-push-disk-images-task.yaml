@@ -42,7 +42,7 @@ spec:
       description: Success if the task succeeds, the error otherwise
   steps:
     - name: pull-and-push-images
-      image: quay.io/konflux-ci/release-service-utils:2ecf04f67fd48ef50946d40b7840b77ccbdf6305
+      image: quay.io/konflux-ci/release-service-utils:be69faf40696254ffe8e83579a25c678085477fe
       env:
         - name: EXODUS_CERT
           valueFrom:
