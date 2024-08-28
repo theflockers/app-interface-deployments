@@ -231,9 +231,9 @@ spec:
             jq -r 'del(.state_history)' <<< \${build_info} | jq -c . > $(results.jsonBuildInfo.path)
             url=\$(jq -r ".logs.url" <<< \${build_info})
             echo IIB log url is: "\${url}" > \$(results.iibLog.path)
-            echo Printing last 2,000 characters from the log >> \$(results.iibLog.path)
-            # Tekton results max out at 4096 chars so we only take last 2000 from the log
-            /usr/bin/curl -s "\${url}" | tail -c 2000 >> \$(results.iibLog.path)
+            echo Printing last 1,000 characters from the log >> \$(results.iibLog.path)
+            # Tekton results max out at 4096 chars so we only take last 1000 from the log
+            /usr/bin/curl -s "\${url}" | tail -c 1000 >> \$(results.iibLog.path)
             case \${state} in
               "complete") break ;;
               "failed") break ;;
