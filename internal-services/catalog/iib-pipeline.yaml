@@ -4,7 +4,7 @@ kind: Pipeline
 metadata:
   name: iib
   labels:
-    app.kubernetes.io/version: "0.3"
+    app.kubernetes.io/version: "0.2"
   annotations:
     tekton.dev/pipelines.minVersion: "0.12.1"
     tekton.dev/tags: fbc
@@ -92,7 +92,3 @@ spec:
       value: $(tasks.t-add-fbc-fragment-to-index-image.results.genericResult)
     - name: indexImageDigests
       value: $(tasks.t-add-fbc-fragment-to-index-image.results.indexImageDigests)
-    - name: iibLog
-      value: $(tasks.t-add-fbc-fragment-to-index-image.results.iibLog)
-    - name: exitCode
-      value: $(tasks.t-add-fbc-fragment-to-index-image.results.exitCode)
