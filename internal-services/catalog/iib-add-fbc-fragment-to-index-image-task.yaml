@@ -253,6 +253,9 @@ spec:
         timeout $(params.buildTimeoutSeconds) ${TASKRUN}
         BUILDEXIT=$?
 
+        # the result should exist in both cases
+        echo -n "" > "$(results.indexImageDigests.path)"
+
         # it should continue only if the IIB build status is complete
         if [ ${BUILDEXIT} -eq 0 ]; then
             echo -n 0 > "$(results.exitCode.path)"
@@ -275,9 +278,8 @@ spec:
         else
             if [ ${BUILDEXIT} -eq 124 ]; then
                 echo "Timeout while waiting for the build to finish"
-                echo "Build timeout" < $(results.buildState.path)
+                echo "Build timeout" > $(results.buildState.path)
             fi
-            echo -n "" > "$(results.indexImageDigests.path)"
             echo -n "$BUILDEXIT" > "$(results.exitCode.path)"
         fi
         exit 0
