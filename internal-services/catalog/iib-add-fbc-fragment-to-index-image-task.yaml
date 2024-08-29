@@ -214,8 +214,11 @@ spec:
               key: url
       script: |
         #!/usr/bin/env bash
-        TASKRUN="/tmp/$$.sh"
+        set -x
 
+        echo "" | tee $(results.iibLog.path)
+
+        TASKRUN="/tmp/$$.sh"
         cat > ${TASKRUN} <<SH
         #!/usr/bin/env bash
         #
@@ -230,10 +233,10 @@ spec:
             # remove the history as it breaks the results build up
             jq -r 'del(.state_history)' <<< \${build_info} | jq -c . > $(results.jsonBuildInfo.path)
             url=\$(jq -r ".logs.url" <<< \${build_info})
-            echo IIB log url is: "\${url}" > \$(results.iibLog.path)
-            echo Printing last 1,000 characters from the log >> \$(results.iibLog.path)
+            echo IIB log url is: "\${url}" > $(results.iibLog.path)
+            echo Printing last 1,000 characters from the log >> $(results.iibLog.path)
             # Tekton results max out at 4096 chars so we only take last 1000 from the log
-            /usr/bin/curl -s "\${url}" | tail -c 1000 >> \$(results.iibLog.path)
+            /usr/bin/curl -s "\${url}" | tail -c 1000 >> $(results.iibLog.path)
             case \${state} in
               "complete") break ;;
               "failed") break ;;
@@ -253,13 +256,12 @@ spec:
         timeout $(params.buildTimeoutSeconds) ${TASKRUN}
         BUILDEXIT=$?
 
-        # the result should exist in both cases
-        echo -n "" > "$(results.indexImageDigests.path)"
+        # these results should always exist.
+        echo "$BUILDEXIT" | tee $(results.exitCode.path)
+        echo -n "" | tee $(results.indexImageDigests.path)
 
         # it should continue only if the IIB build status is complete
         if [ ${BUILDEXIT} -eq 0 ]; then
-            echo -n 0 > "$(results.exitCode.path)"
-
             # get the manifest digests
             indexImageCopy=`cat $(results.jsonBuildInfo.path) | jq -cr .internal_index_image_copy`
             # Use this to obtain the manifest digests for each arch in manifest list
@@ -273,14 +275,13 @@ spec:
             echo -n $indexImageDigests > $(results.indexImageDigests.path)
             if [ -z "${indexImageDigests}" ] ; then
               echo "Index image produced is not multi-arch with a manifest list"
-              echo -n 1 > "$(results.exitCode.path)"
+              echo -n 1 |tee $(results.exitCode.path)
             fi
         else
             if [ ${BUILDEXIT} -eq 124 ]; then
                 echo "Timeout while waiting for the build to finish"
-                echo "Build timeout" > $(results.buildState.path)
+                echo "Build timeout" > "$(results.buildState.path)"
             fi
-            echo -n "$BUILDEXIT" > "$(results.exitCode.path)"
         fi
         exit 0
   volumes:
