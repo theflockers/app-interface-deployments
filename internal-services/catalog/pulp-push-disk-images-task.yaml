@@ -225,6 +225,13 @@ spec:
         RUNNING_JOBS="\j" # Bash parameter for number of jobs currently running
         NUM_COMPONENTS=$(jq '.components | length' <<< "$SNAPSHOT_JSON")
 
+        # use the 1st component's version
+        VERSION=$(jq -c '.components[0].version // ""' <<< "$SNAPSHOT_JSON")
+        if [ "${VERSION}" == "" ] ; then
+          echo "Error: version not specified in .components[0].version. Needed to publish to customer portal" 
+          exit 1
+        fi
+
         # Process each component in parallel
         for ((i = 0; i < NUM_COMPONENTS; i++)) ; do
             COMPONENT=$(jq -c --arg i "$i" '.components[$i|tonumber]' <<< "$SNAPSHOT_JSON")
@@ -248,8 +255,9 @@ spec:
         # Add the files to the payload
         while IFS= read -r -d '' file ; do
             STAGED_JSON=$(jq --arg filename "$(basename "$file")" --arg path "$file" \
+              --arg version "$VERSION" \
               '.payload.files[.payload.files | length] = 
-              {"filename": $filename, "relative_path": $path}' <<< "$STAGED_JSON")
+              {"filename": $filename, "relative_path": $path, "version": $version}' <<< "$STAGED_JSON")
         done < <(find * -type f -print0)
 
         echo "$STAGED_JSON" | yq -P -I 4 > staged.yaml
