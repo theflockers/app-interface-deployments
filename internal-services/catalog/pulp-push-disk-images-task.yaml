@@ -226,7 +226,7 @@ spec:
         NUM_COMPONENTS=$(jq '.components | length' <<< "$SNAPSHOT_JSON")
 
         # use the 1st component's version
-        VERSION=$(jq -c '.components[0].staged.version // ""' <<< "$SNAPSHOT_JSON")
+        VERSION=$(jq -cr '.components[0].staged.version // ""' <<< "$SNAPSHOT_JSON")
         if [ "${VERSION}" == "" ] ; then
           echo "Error: version not specified in .components[0].staged.version. Needed to publish to customer portal"
           exit 1
