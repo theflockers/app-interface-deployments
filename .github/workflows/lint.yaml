@@ -11,7 +11,7 @@ jobs:
   yamllint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Run yamllint
         uses: frenck/action-yamllint@v1
         with:
@@ -20,13 +20,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: checkout files
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Install tkn cli
         uses: jerop/tkn@v0.1.0
         with:
           version: v${TKN_CLI_VERSION}
       - name: Get changed files
-        uses: tj-actions/changed-files@v35
+        uses: tj-actions/changed-files@v41
         id: changed-files
         with:
           files: |
@@ -42,7 +42,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha }}
@@ -60,14 +60,7 @@ jobs:
           fetch-depth: 0
       - name: Run Checkton
         id: checkton
-        uses: chmeliik/checkton@v0.1.2 # Migrating to the konflux-ci org
+        uses: chmeliik/checkton@v0.2.2 # Migrating to the konflux-ci org
         with:
-         # Let there be green. GitHub's code scanning will do the reporting.
-          fail-on-findings: false
+          fail-on-findings: true
           find-copies-harder: true
-      - name: Upload SARIF File
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: ${{ steps.checkton.outputs.sarif }}
-          # Avoid clashing with ShellCheck
-          category: checkton
