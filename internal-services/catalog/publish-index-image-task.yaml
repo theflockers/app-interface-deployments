@@ -46,7 +46,7 @@ spec:
               key: targetIndexCredential
               name: $(params.publishingCredentials)
       image: >-
-        quay.io/hacbs-release/release-utils:06643f9e7c2b6ddf5e095bc735ce7c308793815d
+        quay.io/konflux-ci/release-service-utils:e633d51cd41d73e4b3310face21bb980af7a662f
       script: |
         #!/usr/bin/env sh
         PATH=/bin:/usr/bin:/usr/local/bin

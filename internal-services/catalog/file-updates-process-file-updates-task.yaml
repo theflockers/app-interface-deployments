@@ -36,7 +36,7 @@ spec:
       description: fileUpdates state
   steps:
     - name: perform-updates
-      image: quay.io/hacbs-release/release-utils:2716cf0a7853d9d55ec4a56b052ac4b57fef4fdc
+      image: quay.io/konflux-ci/release-service-utils:e633d51cd41d73e4b3310face21bb980af7a662f
       env:
         - name: GITLAB_HOST
           valueFrom:
