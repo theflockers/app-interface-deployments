@@ -4,7 +4,7 @@ kind: Pipeline
 metadata:
   name: iib
   labels:
-    app.kubernetes.io/version: "0.3"
+    app.kubernetes.io/version: "0.4.0"
   annotations:
     tekton.dev/pipelines.minVersion: "0.12.1"
     tekton.dev/tags: fbc
@@ -12,10 +12,6 @@ spec:
   description: >-
     Tekton pipeline to interact with IIB service for File Based Catalogs
   params:
-    - name: binaryImage
-      type: string
-      default: ""
-      description: The Snapshot in JSON format
     - name: iibServiceConfigSecret
       type: string
       default: iib-services-config
@@ -61,8 +57,6 @@ spec:
       taskRef:
         name: t-add-fbc-fragment-to-index-image
       params:
-        - name: binaryImage
-          value: $(params.binaryImage)
         - name: iibServiceConfigSecret
           value: $(params.iibServiceConfigSecret)
         - name: iibOverwriteFromIndexCredential
