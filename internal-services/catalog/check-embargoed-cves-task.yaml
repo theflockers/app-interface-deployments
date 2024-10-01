@@ -4,7 +4,7 @@ kind: Task
 metadata:
   name: check-embargoed-cves-task
   labels:
-    app.kubernetes.io/version: "0.1"
+    app.kubernetes.io/version: "0.1.1"
   annotations:
     tekton.dev/pipelines.minVersion: "0.12.1"
     tekton.dev/tags: release
@@ -69,6 +69,7 @@ spec:
           # workaround kinit: Invalid UID in persistent keyring name while getting default ccache
           export KRB5CCNAME=`mktemp`
           export KRB5_CONFIG=`mktemp`
+          export KRB5_TRACE=/dev/stderr
           sed '/\[libdefaults\]/a\    dns_canonicalize_hostname = false' /etc/krb5.conf > "${KRB5_CONFIG}"
           kinit ${SERVICE_ACCOUNT_NAME} -k -t /tmp/keytab
 

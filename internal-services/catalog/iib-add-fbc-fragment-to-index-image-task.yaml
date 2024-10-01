@@ -4,7 +4,7 @@ kind: Task
 metadata:
   name: t-add-fbc-fragment-to-index-image
   labels:
-    app.kubernetes.io/version: "0.2.1"
+    app.kubernetes.io/version: "0.2.2"
   annotations:
     tekton.dev/pipelines.minVersion: "0.12.1"
     tekton.dev/tags: release
@@ -117,6 +117,7 @@ spec:
         KRB5_TEMP_CONF=$(mktemp)
         echo "${KRB5_CONF_CONTENT}" > "${KRB5_TEMP_CONF}"
         export KRB5_CONFIG="${KRB5_TEMP_CONF}"
+        export KRB5_TRACE=/dev/stderr
 
         /usr/bin/kinit -V $(cat /mnt/service-account-secret/principal) -k -t /tmp/keytab
 
