@@ -31,12 +31,6 @@ spec:
       type: string
       default: "300"
       description: Timeout seconds to receive the build state
-    - name: iibServiceConfigSecret
-      type: string
-      description: Secret with IIB service config to be used
-    - name: iibOverwriteFromIndexCredential
-      type: string
-      description: Secret with overwrite FromIndex credentials to be passed to IIB
     - name: iibServiceAccountSecret
       type: string
       description: Secret with IIB credentials to be used
@@ -69,17 +63,17 @@ spec:
         - name: IIB_SERVICE_URL
           valueFrom:
             secretKeyRef:
-              name: $(params.iibServiceConfigSecret)
+              name: iib-services-config
               key: url
         - name: IIB_OVERWRITE_FROM_INDEX_USERNAME
           valueFrom:
             secretKeyRef:
-              name: $(params.iibOverwriteFromIndexCredential)
+              name: iib-overwrite-fromimage-credentials
               key: username
         - name: IIB_OVERWRITE_FROM_INDEX_TOKEN
           valueFrom:
             secretKeyRef:
-              name: $(params.iibOverwriteFromIndexCredential)
+              name: iib-overwrite-fromimage-credentials
               key: token
         - name: KRB5_CONF_CONTENT
           valueFrom:
