@@ -4,7 +4,7 @@ kind: Pipeline
 metadata:
   name: push-disk-images
   labels:
-    app.kubernetes.io/version: "0.2.1"
+    app.kubernetes.io/version: "0.2.2"
   annotations:
     tekton.dev/pipelines.minVersion: "0.12.1"
 spec:
@@ -35,7 +35,7 @@ spec:
       description: Env specific secret containing the content gateway credentials
   tasks:
     - name: pulp-push-disk-images
-      timeout: "4h00m0s"
+      timeout: "24h00m0s"
       taskRef:
         name: pulp-push-disk-images
       params:
