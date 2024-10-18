@@ -83,9 +83,9 @@ spec:
           resources:
             limits:
               cpu: 500m
-              memory: 512Mi
+              memory: 1Gi
             requests:
-              cpu: 10m
+              cpu: 100m
               memory: 512Mi
           env:
             - name: SERVICE_NAMESPACE
