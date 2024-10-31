@@ -41,9 +41,16 @@ spec:
 
     - name: request-signature
       taskRef:
-        name: request-signature
-        bundle:
-          quay.io/redhat-isv/tkn-signing-bundle@sha256:72c94ed690baa0f892e69a893520b8089a1008c84f67ee47a19b2dcdd526849d
+        resolver: bundle
+        params:
+          - name: bundle
+            value: >-
+              quay.io/redhat-isv/tkn-signing-bundle
+              @sha256:72c94ed690baa0f892e69a893520b8089a1008c84f67ee47a19b2dcdd526849d
+          - name: name
+            value: request-signature
+          - name: kind
+            value: task
       runAfter:
         - set-env
       params:
@@ -80,9 +87,16 @@ spec:
 
     - name: upload-signature
       taskRef:
-        name: upload-signature
-        bundle:
-          quay.io/redhat-isv/tkn-signing-bundle@sha256:72c94ed690baa0f892e69a893520b8089a1008c84f67ee47a19b2dcdd526849d
+        resolver: bundle
+        params:
+          - name: bundle
+            value: >-
+              quay.io/redhat-isv/tkn-signing-bundle
+              @sha256:72c94ed690baa0f892e69a893520b8089a1008c84f67ee47a19b2dcdd526849d
+          - name: name
+            value: upload-signature
+          - name: kind
+            value: task
       runAfter:
         - request-signature
       params:
