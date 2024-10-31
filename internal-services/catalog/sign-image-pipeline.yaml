@@ -41,7 +41,7 @@ spec:
 
     - name: request-signature
       taskRef:
-        resolver: bundle
+        resolver: bundles
         params:
           - name: bundle
             value: "quay.io/redhat-isv/tkn-signing-bundle@\
@@ -86,7 +86,7 @@ sha256:72c94ed690baa0f892e69a893520b8089a1008c84f67ee47a19b2dcdd526849d"
 
     - name: upload-signature
       taskRef:
-        resolver: bundle
+        resolver: bundles
         params:
           - name: bundle
             value: "quay.io/redhat-isv/tkn-signing-bundle@\
