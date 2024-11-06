@@ -4,7 +4,7 @@ kind: Task
 metadata:
   name: pulp-push-disk-images
   labels:
-    app.kubernetes.io/version: "0.2.1"
+    app.kubernetes.io/version: "0.2.2"
   annotations:
     tekton.dev/pipelines.minVersion: "0.12.1"
     tekton.dev/tags: release
@@ -259,7 +259,7 @@ spec:
               --arg version "$VERSION" \
               '.payload.files[.payload.files | length] = 
               {"filename": $filename, "relative_path": $path, "version": $version}' <<< "$STAGED_JSON")
-        done < <(find ./* -type f -print0)
+        done < <(find * -type f -print0)
 
         echo "$STAGED_JSON" | yq -P -I 4 > staged.yaml
 
