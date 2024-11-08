@@ -29,6 +29,10 @@ spec:
     - name: application
       type: string
       description: Application being released
+    - name: file_updates_secret
+      type: string
+      default: "file-updates-secret"
+      description: The credentials used to update the git repo
   tasks:
     - name: task-process-file-updates
       taskRef:
@@ -44,6 +48,8 @@ spec:
           value: $(params.paths)
         - name: application
           value: $(params.application)
+        - name: file_updates_secret
+          value: $(params.file_updates_secret)
   results:
     - name: jsonBuildInfo
       value: $(tasks.task-process-file-updates.results.fileUpdatesInfo)
