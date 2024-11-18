@@ -29,6 +29,10 @@ spec:
     - name: application
       type: string
       description: Application being released
+    - name: file_updates_secret
+      type: string
+      default: "file-updates-secret"
+      description: The credentials used to update the git repo
   results:
     - name: fileUpdatesInfo
       description: fileUpdates detailed information
@@ -41,22 +45,22 @@ spec:
         - name: GITLAB_HOST
           valueFrom:
             secretKeyRef:
-              name: file-updates-secret
+              name: $(params.file_updates_secret)
               key: gitlab_host
         - name: ACCESS_TOKEN
           valueFrom:
             secretKeyRef:
-              name: file-updates-secret
+              name: $(params.file_updates_secret)
               key: gitlab_access_token
         - name: GIT_AUTHOR_NAME
           valueFrom:
             secretKeyRef:
-              name: file-updates-secret
+              name: $(params.file_updates_secret)
               key: git_author_name
         - name: GIT_AUTHOR_EMAIL
           valueFrom:
             secretKeyRef:
-              name: file-updates-secret
+              name: $(params.file_updates_secret)
               key: git_author_email
       script: |
           #!/usr/bin/env sh
@@ -182,7 +186,7 @@ spec:
           git_commit_and_push --branch $WORKING_BRANCH --message "fileUpdates changes"
 
           echo "Creating Pull Request..."
-          GITLAB_MR_MSG="[RHTAP release] $(params.application): fileUpdates changes ${WORKING_BRANCH}"
+          GITLAB_MR_MSG="[Konflux release] $(params.application): fileUpdates changes ${WORKING_BRANCH}"
           gitlab_create_mr --head $WORKING_BRANCH --target-branch $REVISION --title "${GITLAB_MR_MSG}" \
               --description "${GITLAB_MR_MSG}" --upstream-repo "${UPSTREAM_REPO}" | jq '. | tostring' \
               |tee $(results.fileUpdatesInfo.path)
