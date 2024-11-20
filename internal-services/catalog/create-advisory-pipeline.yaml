@@ -4,7 +4,7 @@ kind: Pipeline
 metadata:
   name: create-advisory
   labels:
-    app.kubernetes.io/version: "0.4"
+    app.kubernetes.io/version: "0.5"
   annotations:
     tekton.dev/pipelines.minVersion: "0.12.1"
     tekton.dev/tags: advisory
@@ -31,6 +31,9 @@ spec:
     - name: advisory_secret_name
       type: string
       description: The name of the secret that contains the advisory creation metadata
+    - name: errata_secret_name
+      type: string
+      description: The name of the secret that contains the errata service account metadata
   tasks:
     - name: create-advisory-task
       taskRef:
@@ -46,6 +49,8 @@ spec:
           value: $(params.config_map_name)
         - name: advisory_secret_name
           value: $(params.advisory_secret_name)
+        - name: errata_secret_name
+          value: $(params.errata_secret_name)
   results:
     - name: result
       value: $(tasks.create-advisory-task.results.result)
