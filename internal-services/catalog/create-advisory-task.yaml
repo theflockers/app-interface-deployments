@@ -4,7 +4,7 @@ kind: Task
 metadata:
   name: create-advisory-task
   labels:
-    app.kubernetes.io/version: "0.10.0"
+    app.kubernetes.io/version: "0.11.0"
   annotations:
     tekton.dev/pipelines.minVersion: "0.12.1"
     tekton.dev/tags: release
@@ -34,6 +34,9 @@ spec:
     - name: advisory_secret_name
       type: string
       description: The name of the secret that contains the advisory creation metadata
+    - name: errata_secret_name
+      type: string
+      description: The name of the secret that contains the errata service account metadata
   results:
     - name: result
       description: Success if the task succeeds, the error otherwise
@@ -74,17 +77,17 @@ spec:
         - name: ERRATA_API
           valueFrom:
             secretKeyRef:
-              name: errata-service-account
+              name: $(params.errata_secret_name)
               key: errata_api
         - name: SERVICE_ACCOUNT_NAME
           valueFrom:
             secretKeyRef:
-              name: errata-service-account
+              name: $(params.errata_secret_name)
               key: name
         - name: SERVICE_ACCOUNT_KEYTAB
           valueFrom:
             secretKeyRef:
-              name: errata-service-account
+              name: $(params.errata_secret_name)
               key: base64_keytab
         - name: "ADVISORY_JSON"
           value: "$(params.advisory_json)"
@@ -109,7 +112,9 @@ spec:
 
           REPO_BRANCH=main
           ADVISORY_URL=""
-          cd /tmp # Workaround fatal: could not create work tree dir Permission denied
+
+          # Switch to /tmp to avoid filesystem permission issues
+          cd /tmp
 
           # loading git and gitlab functions
           . /home/utils/gitlab-functions
