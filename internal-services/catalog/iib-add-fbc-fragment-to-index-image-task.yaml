@@ -4,7 +4,7 @@ kind: Task
 metadata:
   name: t-add-fbc-fragment-to-index-image
   labels:
-    app.kubernetes.io/version: "0.3.1"
+    app.kubernetes.io/version: "0.3.2"
   annotations:
     tekton.dev/pipelines.minVersion: "0.12.1"
     tekton.dev/tags: release
@@ -83,11 +83,16 @@ spec:
       script: |
         #!/usr/bin/env bash
         #
+        # all in line shellcheck disables will be handled in the PR below:
+        # https://github.com/hacbs-release/app-interface-deployments/pull/236
+
         isfbcOptIn() {
           TMPFILE=$(mktemp)
           PYXIS_URL="https://pyxis.engineering.redhat.com/v1"
 
+          # shellcheck disable=SC2162 # (info): read without -r will mangle backslashes.
           IFS="/" read REGISTRY REPO IMAGE <<< "${1}"
+          # shellcheck disable=SC2162 # (info): read without -r will mangle backslashes.
           IFS=":" read IMAGE TAG <<< "${IMAGE}"
 
           FETCH_URL="${PYXIS_URL}/repositories/registry/${REGISTRY}/repository/${REPO}/${IMAGE}/tag/${TAG}"
@@ -95,38 +100,41 @@ spec:
           # strips the last "/tag" in case $TAG is not set
           [ -z "${TAG}" ] && FETCH_URL=${FETCH_URL%/tag*}
 
+          # shellcheck disable=SC2086 # (info): Double quote to prevent globbing and word splitting.
           curl --negotiate -u: "${FETCH_URL}" -o $TMPFILE
+
           # prints "false" in case .fbc_opt_in entry is missing
+          # shellcheck disable=SC2086 # (info): Double quote to prevent globbing and word splitting.
           jq -e -r '.fbc_opt_in //false' $TMPFILE && rm -f $TMPFILE
+        }
+
+        # checks if there is any previous build for the same fbc_fragment.
+        # in case multiple builds are found, returns only the last one.
+        check_previous_build() {
+          user="${1}"
+          from_index="${2}"
+          fbc_fragment="${3}"
+
+          # fetch only builds in progress or completed
+          curl -s "${IIB_SERVICE_URL}/builds?user=${user}&from_index=${from_index}" | \
+            jq --arg fbc_fragment "${fbc_fragment}" \
+              '[.items[] |select(.fbc_fragment==$fbc_fragment and .state!="failed")][0] // empty'
         }
 
         # performs kerberos authentication.
         base64 -d /mnt/service-account-secret/keytab > /tmp/keytab
 
         KRB5_TEMP_CONF=$(mktemp)
+        KRB5_PRINCIPAL=$(cat /mnt/service-account-secret/principal)
+
         echo "${KRB5_CONF_CONTENT}" > "${KRB5_TEMP_CONF}"
         export KRB5_CONFIG="${KRB5_TEMP_CONF}"
+
         export KRB5_TRACE=/dev/stderr
 
-        /usr/bin/kinit -V $(cat /mnt/service-account-secret/principal) -k -t /tmp/keytab
+        /usr/bin/kinit -V "${KRB5_PRINCIPAL}" -k -t /tmp/keytab
 
         set -x
-        # check if this fbc fragment is opt-in
-        echo "Fetching the image bundle from $(params.fbcFragment)..."
-        PULL_SPEC_LIST=$(opm render $(params.fbcFragment) | jq -r \
-        'select(.schema == "olm.bundle") | "\(.image)" | split("@")[0]' |uniq)
-        for PULL_SPEC in ${PULL_SPEC_LIST}; do
-            # make sure they query is done using the internal name instead of the public
-            PULL_SPEC=$(sed  's/registry.redhat.io/registry.access.redhat.com/g' <<< $PULL_SPEC)
-
-            echo "Attempting to fetch from ${FETCH_URL} to check if fragment is \`fbc_opt_in==true\`..."
-            fbcOptIn+=(`isfbcOptIn ${PULL_SPEC}`)
-        done
-
-        fbcOptIn=($(printf "%s\n" ${fbcOptIn[@]} |sort |uniq))
-        mustPublishIndexImage=$fbcOptIn
-        mustSignIndexImage=$fbcOptIn
-
         if [ "$(params.hotfix)" == "true" ]; then
             echo "Hotfix build"
             fbcOptIn="false"
@@ -137,18 +145,50 @@ spec:
             fbcOptIn="false"
             mustSignIndexImage="false"
             mustPublishIndexImage="false"
+        else
+            # check if this fbc fragment is opt-in
+            echo "Fetching the image bundle from $(params.fbcFragment)..."
+            PULL_SPEC_LIST=$(opm render "$(params.fbcFragment)" | jq -r \
+            'select(.schema == "olm.bundle") | "\(.image)" | split("@")[0]' |uniq)
+            for PULL_SPEC in ${PULL_SPEC_LIST}; do
+                # make sure they query is done using the internal name instead of the public
+                PULL_SPEC="${PULL_SPEC//registry.redhat.io/registry.access.redhat.com}"
 
-        # in case of more than one image all should have the same fbc_opt_in value
-        elif [ $(wc -w <<< ${fbcOptIn[@]}) -ne 1 ]; then
-            fbcOptIn="false"
-            mustSignIndexImage="false"
-            mustPublishIndexImage="false"
+                echo "Attempting to fetch from ${FETCH_URL} to check if fragment is \`fbc_opt_in==true\`..."
+                # shellcheck disable=SC2207
+                #   (warning): Prefer mapfile or read -a to split command output (or quote to avoid splitting).
+                # shellcheck disable=SC2006 # (style): Use \$(...) notation instead of legacy backticks `...`.
+                # shellcheck disable=SC2086 # (info): Double quote to prevent globbing and word splitting.
+                fbcOptIn+=(`isfbcOptIn ${PULL_SPEC}`)
+            done
+
+            # shellcheck disable=SC2207
+            #   (warning): Prefer mapfile or read -a to split command output (or quote to avoid splitting).
+            # shellcheck disable=SC2068 # (error): Double quote array expansions to avoid re-splitting elements.
+            fbcOptIn=($(printf "%s\n" ${fbcOptIn[@]} |sort |uniq))
+
+            # shellcheck disable=SC2128 # (warning): Expanding an array without an index only gives the first element.
+            mustPublishIndexImage="${fbcOptIn}"
+            # shellcheck disable=SC2128 # (warning): Expanding an array without an index only gives the first element.
+            mustSignIndexImage="${fbcOptIn}"
+
+            # in case of more than one image all should have the same fbc_opt_in value
+            if [ "$(wc -w <<< "${fbcOptIn[@]}")" -ne 1 ]; then
+                fbcOptIn=("false")
+                mustSignIndexImage="false"
+                mustPublishIndexImage="false"
+            fi
         fi
 
+        # shellcheck disable=SC2128 # (warning): Expanding an array without an index only gives the first element.
         echo "Fragment has \`fbc_opt_in==${fbcOptIn}\`"
         echo "             \`mustPublishIndexImage==${mustPublishIndexImage}\`"
         echo "             \`mustSignIndexImage==${mustSignIndexImage}\`"
 
+        # these results will be used by add-fbc-contribution to control
+        # signing and publishing of the built fragment
+        # shellcheck disable=SC2128 # (warning): Expanding an array without an index only gives the first element.
+        # shellcheck disable=SC2046 # (warning): Quote this to prevent word splitting.
         jq -n -c \
            --arg fbc_opt_in "${fbcOptIn}" \
            --arg publish_index_image "${mustPublishIndexImage}" \
@@ -159,11 +199,24 @@ spec:
              "sign_index_image": $sign_index_image
             } | tostring' | tee $(results.genericResult.path)
 
+        # if it finds a build which is completed or in progress, it should exit this step and jump to
+        # the next step `s-wait-for-build-state` which will watch the build until it is completed.
+        build=$(check_previous_build "${KRB5_PRINCIPAL}" "$(params.fromIndex)" "$(params.fbcFragment)")
+        if [ -n "${build}" ]; then
+          echo "=== A previous build for this fragment was found ==="
+          echo "${build}" |tee "$(results.jsonBuildInfo.path)"
+          exit 0
+        fi
+
         # adds the json request parameters to a file to be used as input data
         # for curl and preventing shell expansion.
         json_input=/tmp/$$.tmp
         json_raw_input=/tmp/$$_raw.tmp
 
+        # shellcheck disable=SC2006 # (style): Use $(...) notation instead of legacy backticks `...`.
+        # shellcheck disable=SC2128 # (warning): Expanding an array without an index only gives the first element.
+        # shellcheck disable=SC2046 # (warning): Quote this to prevent word splitting.
+        # shellcheck disable=SC2005 # (style): Useless echo? Instead of 'echo $(cmd)', just use 'cmd'.
         cat > $json_raw_input <<JSON
         {
           "fbc_fragment": "$(params.fbcFragment)",
@@ -181,12 +234,15 @@ spec:
           if(.add_arches | length) == 0 then del(.add_arches) else . end |
           if(.build_tags | length) == 0 then del(.build_tags) else . end' ${json_raw_input} > ${json_input}
 
+        # shellcheck disable=SC2046 # (warning): Quote this to prevent word splitting.
         echo "Calling IIB endpoint" > $(results.buildState.path)
         # adds image to the index.
+        # shellcheck disable=SC2046 # (warning): Quote this to prevent word splitting.
         /usr/bin/curl -u : --negotiate -s -X POST -H "Content-Type: application/json" -d@${json_input} --insecure \
         "${IIB_SERVICE_URL}/builds/fbc-operations" |tee $(results.jsonBuildInfo.path)
 
         # checks if the previous call returned an error.
+        # shellcheck disable=SC2046 # (warning): Quote this to prevent word splitting.
         ! jq -e -r ".error | select( . != null )" $(results.jsonBuildInfo.path)
       volumeMounts:
         - name: service-account-secret
