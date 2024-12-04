@@ -101,7 +101,7 @@ spec:
             secretKeyRef:
               name: $(params.cgwSecret)
               key: username
-        - name: CGW_TOKEN
+        - name: CGW_PASSWORD
           valueFrom:
             secretKeyRef:
               name: $(params.cgwSecret)
