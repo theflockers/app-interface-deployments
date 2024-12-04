@@ -42,7 +42,7 @@ spec:
       description: Success if the task succeeds, the error otherwise
   steps:
     - name: pull-and-push-images
-      image: quay.io/konflux-ci/release-service-utils:be69faf40696254ffe8e83579a25c678085477fe
+      image: quay.io/konflux-ci/release-service-utils:50b8874d0ce2ba56e3a290bd39827398eec35263
       env:
         - name: EXODUS_CERT
           valueFrom:
@@ -101,7 +101,7 @@ spec:
             secretKeyRef:
               name: $(params.cgwSecret)
               key: username
-        - name: CGW_TOKEN
+        - name: CGW_PASSWORD
           valueFrom:
             secretKeyRef:
               name: $(params.cgwSecret)
