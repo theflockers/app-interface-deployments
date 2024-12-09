@@ -4,7 +4,7 @@ kind: Pipeline
 metadata:
   name: simple-signing-pipeline
   labels:
-    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/version: "0.1.1"
   annotations:
     tekton.dev/pipelines.minVersion: "0.12.1"
     tekton.dev/tags: release
@@ -35,6 +35,7 @@ spec:
       type: string
     - name: taskGitRevision
       description: The revision in the taskGitUrl repo to be used
+      default: production
       type: string
   workspaces:
     - name: pipeline
