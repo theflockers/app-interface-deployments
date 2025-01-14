@@ -4,7 +4,7 @@ kind: Pipeline
 metadata:
   name: iib
   labels:
-    app.kubernetes.io/version: "0.6.0"
+    app.kubernetes.io/version: "0.7.0"
   annotations:
     tekton.dev/pipelines.minVersion: "0.12.1"
     tekton.dev/tags: fbc
@@ -48,6 +48,8 @@ spec:
     - name: buildTimeoutSeconds
       type: string
       description: IIB Build Service timeout seconds
+  workspaces:
+    - name: pipeline
   tasks:
     - name: t-add-fbc-fragment-to-index-image
       taskRef:
@@ -71,6 +73,12 @@ spec:
           value: $(params.stagedIndex)
         - name: buildTimeoutSeconds
           value: $(params.buildTimeoutSeconds)
+        - name: subdirectory
+          value: $(context.pipelineRun.uid)
+      workspaces:
+        - name: data
+          workspace: pipeline
+          subPath: fbc
   results:
     - name: jsonBuildInfo
       value: $(tasks.t-add-fbc-fragment-to-index-image.results.jsonBuildInfo)

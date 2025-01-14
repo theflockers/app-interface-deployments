@@ -4,7 +4,7 @@ kind: Task
 metadata:
   name: t-add-fbc-fragment-to-index-image
   labels:
-    app.kubernetes.io/version: "0.4.0"
+    app.kubernetes.io/version: "0.5.0"
   annotations:
     tekton.dev/pipelines.minVersion: "0.12.1"
     tekton.dev/tags: release
@@ -46,6 +46,10 @@ spec:
       type: string
       default: "false"
       description: Whether this build is for a staged index build
+    - name: subdirectory
+      description: Subdirectory inside the workspace to be used
+      type: string
+      default: ""
   results:
     - name: jsonBuildInfo
       description: JSON build information for the requested build
@@ -59,6 +63,9 @@ spec:
       description: The link to the log from the IIB request
     - name: exitCode
       description: The exit code from the task
+  workspaces:
+    - name: data
+      description: workspace to read and save files
   steps:
     - name: s-add-fbc-fragment-to-index-image
       image: >-
@@ -86,6 +93,11 @@ spec:
               key: krb5.conf
       script: |
         #!/usr/bin/env bash
+
+        if [ -n "$(params.subdirectory)" ]; then
+          mkdir -p "$(workspaces.data.path)/$(params.subdirectory)"
+        fi
+        WORKDIR="$(workspaces.data.path)/$(params.subdirectory)"
 
         isFBCOptIn() {
           TMPFILE=$(mktemp)
@@ -134,7 +146,7 @@ spec:
         }
 
         # performs kerberos authentication.
-        base64 -d /mnt/service-account-secret/keytab > /tmp/keytab
+        base64 -d /mnt/service-account-secret/keytab > "${WORKDIR}/keytab"
 
         KRB5_TEMP_CONF=$(mktemp)
         KRB5_PRINCIPAL=$(cat /mnt/service-account-secret/principal)
@@ -143,7 +155,7 @@ spec:
         export KRB5_CONFIG="${KRB5_TEMP_CONF}"
         export KRB5_TRACE=/dev/stderr
 
-        /usr/bin/kinit -V "${KRB5_PRINCIPAL}" -k -t /tmp/keytab
+        /usr/bin/kinit -V "${KRB5_PRINCIPAL}" -k -t "${WORKDIR}/keytab"
 
         set -x
         # check if this fbc fragment is opt-in
@@ -204,10 +216,10 @@ spec:
 
         # adds the json request parameters to a file to be used as input data
         # for curl and preventing shell expansion.
-        json_input=/tmp/$$.tmp
-        json_raw_input=/tmp/$$_raw.tmp
+        json_input="${WORKDIR}/$$.tmp"
+        json_raw_input="${WORKDIR}/$$_raw.tmp"
 
-        cat > $json_raw_input <<JSON
+        cat > "$json_raw_input" <<JSON
         {
           "fbc_fragment": "$(params.fbcFragment)",
           "from_index": "$(params.fromIndex)",
@@ -222,11 +234,11 @@ spec:
         jq -r '
           if .overwrite_from_index == false then del(( .overwrite_from_index, .overwrite_from_index_token)) else . end |
           if(.add_arches | length) == 0 then del(.add_arches) else . end |
-          if(.build_tags | length) == 0 then del(.build_tags) else . end' ${json_raw_input} > ${json_input}
+          if(.build_tags | length) == 0 then del(.build_tags) else . end' "${json_raw_input}" > "${json_input}"
 
         echo "Calling IIB endpoint" > "$(results.buildState.path)"
         # adds image to the index.
-        /usr/bin/curl -u : --negotiate -s -X POST -H "Content-Type: application/json" -d@${json_input} --insecure \
+        /usr/bin/curl -u : --negotiate -s -X POST -H "Content-Type: application/json" -d@"${json_input}" --insecure \
         "${IIB_SERVICE_URL}/builds/fbc-operations" |tee "$(results.jsonBuildInfo.path)"
 
         # checks if the previous call returned an error.
