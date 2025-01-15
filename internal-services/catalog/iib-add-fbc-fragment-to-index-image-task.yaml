@@ -129,7 +129,10 @@ spec:
             # required to assure the catalog integrity.
             if [ "${newCatalogCreatedDate}" -gt "${upstreamCatalogCreatedDate}" ]; then
               echo "${build}"
+              return 0
             fi
+          else
+            echo "${build}"
           fi
         }
 
